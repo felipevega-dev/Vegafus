@@ -154,7 +154,7 @@ export class SpellLibrary {
         return [
             new Spell(
                 'Bola de Fuego',
-                25,
+                3,
                 4,
                 4,
                 'Lanza una bola de fuego que causa daño en área',
@@ -189,7 +189,7 @@ export class SpellLibrary {
             ),
             new Spell(
                 'Rayo',
-                20,
+                4,
                 3,
                 5,
                 'Ataca en línea recta atravesando enemigos',
@@ -223,7 +223,7 @@ export class SpellLibrary {
             ),
             new Spell(
                 'Curación',
-                30,
+                6,
                 3,
                 0,
                 'Restaura puntos de vida',

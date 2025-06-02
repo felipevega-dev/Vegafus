@@ -66,6 +66,7 @@ export class IsometricMap extends Phaser.Scene {
 
                 // Crear patrón simétrico
                 let tileType = 'iso-grass'; // Por defecto hierba
+                let isPositioningZone = false;
 
                 // Bordes del mapa
                 if (x === 0 || y === 0 || x === 14 || y === 14) {
@@ -76,6 +77,7 @@ export class IsometricMap extends Phaser.Scene {
                          (x === 5 && y === 5) || (x === 9 && y === 9) || // Diagonales
                          (x === 5 && y === 9) || (x === 9 && y === 5)) {
                     tileType = 'iso-water';
+                    isPositioningZone = true; // Las celdas azules son zonas de posicionamiento
                 }
                 // Algunas piedras decorativas simétricas
                 else if ((x === 3 && y === 7) || (x === 11 && y === 7) ||
@@ -97,8 +99,14 @@ export class IsometricMap extends Phaser.Scene {
                     cellBg.setFillStyle(0x696969, 0.8); // Gris para piedra
                     this.grid.cells[y][x].walkable = false;
                 } else if (tileType === 'iso-water') {
-                    cellBg.setFillStyle(0x4169E1, 0.6); // Azul para agua
-                    this.grid.cells[y][x].walkable = false;
+                    if (isPositioningZone) {
+                        cellBg.setFillStyle(0x4169E1, 0.6); // Azul para zonas de posicionamiento
+                        this.grid.cells[y][x].walkable = true; // Las zonas azules son caminables
+                        this.grid.cells[y][x].isPositioningZone = true;
+                    } else {
+                        cellBg.setFillStyle(0x4169E1, 0.6); // Azul para agua normal
+                        this.grid.cells[y][x].walkable = false;
+                    }
                 } else {
                     cellBg.setFillStyle(0x228B22, 0.3); // Verde para hierba
                 }
@@ -106,39 +114,106 @@ export class IsometricMap extends Phaser.Scene {
                 // Guardar referencia para hover effects
                 cellBg.gridX = x;
                 cellBg.gridY = y;
+                cellBg.isPositioningZone = isPositioningZone;
                 cellBg.setInteractive();
 
                 // Efectos de hover
                 cellBg.on('pointerover', () => {
-                    if (this.turnManager.isPlayerTurn && this.turnManager.gameState === 'playing') {
+                    if (this.turnManager.gameState === 'positioning') {
+                        // Durante posicionamiento, resaltar celdas válidas
+                        const currentCell = this.grid.cells[y][x];
+                        if (currentCell.walkable && (isPositioningZone || !currentCell.occupied)) {
+                            cellBg.setFillStyle(cellBg.fillColor, 0.8); // Más opaco
+                        }
+                    } else if (this.turnManager.isPlayerTurn && this.turnManager.gameState === 'playing') {
                         this.showMovementPreview(x, y);
                     }
                 });
 
                 cellBg.on('pointerout', () => {
-                    this.clearMovementPreview();
+                    if (this.turnManager.gameState === 'positioning') {
+                        // Restaurar opacidad original
+                        if (tileType === 'iso-stone') {
+                            cellBg.setFillStyle(0x696969, 0.8);
+                        } else if (tileType === 'iso-water') {
+                            cellBg.setFillStyle(0x4169E1, 0.6);
+                        } else {
+                            cellBg.setFillStyle(0x228B22, 0.3);
+                        }
+                    } else {
+                        this.clearMovementPreview();
+                    }
                 });
             }
         }
     }
 
     createPlayer() {
-        // Crear jugador en posición inicial del grid (lado izquierdo)
-        this.player = new Player(this, 2, 7, 'mage'); // Cambiado a mago para probar hechizos
+        // Crear jugador en posición inicial temporal (se moverá durante posicionamiento)
+        this.player = new Player(this, 5, 5, 'mage'); // Posición temporal en el centro
     }
 
     createEnemies() {
-        // Crear enemigos en posiciones simétricas (lado derecho)
+        // No crear enemigos inicialmente - se crearán después del posicionamiento
         this.enemies = [];
+    }
 
-        // Enemigo básico
-        this.enemies.push(new Enemy(this, 12, 7, 'basic'));
+    // Generar enemigos aleatoriamente después del posicionamiento
+    spawnEnemiesRandomly() {
+        const enemyTypes = ['basic', 'strong', 'fast'];
+        const numEnemies = 3;
 
-        // Enemigo fuerte
-        this.enemies.push(new Enemy(this, 11, 6, 'strong'));
+        // Obtener celdas disponibles (no ocupadas y caminables)
+        const availableCells = [];
+        for (let y = 0; y < this.grid.height; y++) {
+            for (let x = 0; x < this.grid.width; x++) {
+                if (this.grid.isWalkable(x, y) && !this.grid.cells[y][x].occupied) {
+                    // Evitar spawn muy cerca del jugador (mínimo 3 celdas de distancia)
+                    const distanceToPlayer = this.grid.getDistance(x, y, this.player.gridX, this.player.gridY);
+                    if (distanceToPlayer >= 3) {
+                        availableCells.push({ x, y });
+                    }
+                }
+            }
+        }
 
-        // Enemigo rápido
-        this.enemies.push(new Enemy(this, 11, 8, 'fast'));
+        // Crear enemigos en posiciones aleatorias
+        for (let i = 0; i < numEnemies && availableCells.length > 0; i++) {
+            const randomIndex = Phaser.Math.Between(0, availableCells.length - 1);
+            const spawnPos = availableCells.splice(randomIndex, 1)[0];
+            const enemyType = enemyTypes[i % enemyTypes.length];
+
+            const enemy = new Enemy(this, spawnPos.x, spawnPos.y, enemyType);
+            this.enemies.push(enemy);
+
+            // Añadir al sistema de turnos
+            this.turnManager.addEntity(enemy);
+
+            // Efecto visual de aparición
+            this.createSpawnEffect(spawnPos.x, spawnPos.y);
+        }
+    }
+
+    // Efecto visual de aparición de enemigos
+    createSpawnEffect(gridX, gridY) {
+        const worldPos = this.grid.gridToWorld(gridX, gridY);
+
+        // Círculo de aparición
+        const spawnCircle = this.add.circle(worldPos.x, worldPos.y, 30, 0xff0000, 0.7);
+        spawnCircle.setDepth(200);
+
+        // Animación de aparición
+        this.tweens.add({
+            targets: spawnCircle,
+            scaleX: 2,
+            scaleY: 2,
+            alpha: 0,
+            duration: 800,
+            ease: 'Power2',
+            onComplete: () => {
+                spawnCircle.destroy();
+            }
+        });
     }
 
     createTurnSystem() {
@@ -148,13 +223,8 @@ export class IsometricMap extends Phaser.Scene {
         // Añadir jugador al sistema de turnos
         this.turnManager.addEntity(this.player);
 
-        // Añadir enemigos al sistema de turnos
-        this.enemies.forEach(enemy => {
-            this.turnManager.addEntity(enemy);
-        });
-
-        // Iniciar combate
-        this.turnManager.startCombat();
+        // Iniciar fase de posicionamiento (no combate aún)
+        this.turnManager.startPositioning();
     }
 
     createSpellUI() {
@@ -308,6 +378,17 @@ export class IsometricMap extends Phaser.Scene {
             return;
         }
 
+        // Fase de posicionamiento
+        if (this.turnManager.gameState === 'positioning') {
+            // Solo permitir movimiento a celdas azules (zonas de posicionamiento) o hierba
+            const cell = this.grid.cells[gridPos.y][gridPos.x];
+            if (cell.walkable && (cell.isPositioningZone || !cell.occupied)) {
+                // Mover jugador sin restricciones de puntos de movimiento durante posicionamiento
+                this.movePlayerToPosition(gridPos.x, gridPos.y);
+            }
+            return;
+        }
+
         // Si estamos en modo hechizo
         if (this.spellMode && this.selectedSpellIndex >= 0) {
             if (this.player.castSpell(this.selectedSpellIndex, gridPos.x, gridPos.y)) {
@@ -342,6 +423,24 @@ export class IsometricMap extends Phaser.Scene {
                 this.updateSpellButtons();
             }
         }
+    }
+
+    // Mover jugador durante la fase de posicionamiento
+    movePlayerToPosition(newGridX, newGridY) {
+        // Liberar celda anterior
+        this.grid.setFree(this.player.gridX, this.player.gridY);
+
+        // Actualizar posición
+        this.player.gridX = newGridX;
+        this.player.gridY = newGridY;
+
+        // Ocupar nueva celda
+        this.grid.setOccupied(this.player.gridX, this.player.gridY, this.player);
+
+        // Mover sprite instantáneamente
+        const worldPos = this.grid.gridToWorld(this.player.gridX, this.player.gridY);
+        this.player.sprite.setPosition(worldPos.x, worldPos.y);
+        this.player.updateHealthBarPosition();
     }
 
     // Mostrar preview de movimiento

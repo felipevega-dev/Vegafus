@@ -7,7 +7,7 @@ export class TurnManager {
         this.turnOrder = [];
         this.currentEntityIndex = 0;
         this.isPlayerTurn = true;
-        this.gameState = 'playing'; // 'playing', 'victory', 'defeat'
+        this.gameState = 'positioning'; // 'positioning', 'playing', 'victory', 'defeat'
 
         // Sistema de temporizador
         this.turnTimeLimit = 30000; // 30 segundos por turno
@@ -27,17 +27,34 @@ export class TurnManager {
         this.turnOrder.push(entity);
     }
 
-    // Inicializar el sistema de turnos
+    // Inicializar fase de posicionamiento
+    startPositioning() {
+        this.gameState = 'positioning';
+        this.updateTurnUI();
+    }
+
+    // Inicializar el combate real
     startCombat() {
         this.currentTurn = 1;
         this.currentEntityIndex = 0;
         this.gameState = 'playing';
-        
+
         if (this.turnOrder.length > 0) {
             this.startCurrentEntityTurn();
         }
-        
+
         this.updateTurnUI();
+    }
+
+    // Confirmar posición y comenzar combate
+    confirmPositionAndStartCombat() {
+        if (this.gameState !== 'positioning') return;
+
+        // Generar enemigos aleatoriamente
+        this.scene.spawnEnemiesRandomly();
+
+        // Cambiar a modo combate
+        this.startCombat();
     }
 
     // Iniciar el turno de la entidad actual
@@ -278,6 +295,36 @@ export class TurnManager {
             }
         });
 
+        // Botón "Listo" para confirmar posición
+        this.readyButton = this.scene.add.text(100, 85, 'LISTO', {
+            fontSize: '14px',
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            backgroundColor: '#00aa00',
+            padding: { x: 12, y: 6 }
+        });
+        this.readyButton.setOrigin(0.5);
+        this.readyButton.setDepth(1501);
+        this.readyButton.setInteractive();
+        this.readyButton.on('pointerdown', () => {
+            if (this.gameState === 'positioning') {
+                this.confirmPositionAndStartCombat();
+            }
+        });
+
+        // Efectos hover para el botón Listo
+        this.readyButton.on('pointerover', () => {
+            if (this.gameState === 'positioning') {
+                this.readyButton.setStyle({ backgroundColor: '#00cc00' });
+            }
+        });
+
+        this.readyButton.on('pointerout', () => {
+            if (this.gameState === 'positioning') {
+                this.readyButton.setStyle({ backgroundColor: '#00aa00' });
+            }
+        });
+
         // Panel de información del jugador
         this.createPlayerInfoPanel();
     }
@@ -315,6 +362,28 @@ export class TurnManager {
 
     // Actualizar la interfaz de usuario
     updateTurnUI() {
+        // Manejar fase de posicionamiento
+        if (this.gameState === 'positioning') {
+            this.turnText.setText('Posicionamiento');
+            this.entityText.setText('Elige tu posición');
+            this.entityText.setColor('#00ffff');
+            this.timerText.setVisible(false);
+            this.endTurnButton.setVisible(false);
+            this.readyButton.setVisible(true);
+
+            // Actualizar información del jugador
+            const player = this.getPlayer();
+            if (player) {
+                this.playerHPText.setText(`HP: ${player.currentHP}/${player.maxHP}`);
+                this.playerAPText.setText(`PA: ${player.maxActionPoints}/${player.maxActionPoints}`);
+                this.playerMPText.setText(`PM: ${player.maxMovementPoints}/${player.maxMovementPoints}`);
+            }
+            return;
+        }
+
+        // Ocultar botón de listo durante el combate
+        this.readyButton.setVisible(false);
+
         const currentEntity = this.getCurrentEntity();
 
         // Actualizar información de turno
@@ -327,7 +396,7 @@ export class TurnManager {
         }
 
         // Actualizar temporizador
-        if (this.isPlayerTurn) {
+        if (this.isPlayerTurn && this.gameState === 'playing') {
             const seconds = Math.ceil(this.timeRemaining / 1000);
             this.timerText.setText(`Tiempo: ${seconds}s`);
 
@@ -367,6 +436,7 @@ export class TurnManager {
         if (this.entityText) this.entityText.destroy();
         if (this.timerText) this.timerText.destroy();
         if (this.endTurnButton) this.endTurnButton.destroy();
+        if (this.readyButton) this.readyButton.destroy();
         if (this.playerPanel) this.playerPanel.destroy();
         if (this.playerHPText) this.playerHPText.destroy();
         if (this.playerAPText) this.playerAPText.destroy();
