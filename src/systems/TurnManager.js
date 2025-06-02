@@ -1,3 +1,5 @@
+import { CombatSummary } from './CombatSummary.js';
+
 export class TurnManager {
     constructor(scene) {
         this.scene = scene;
@@ -6,7 +8,16 @@ export class TurnManager {
         this.currentEntityIndex = 0;
         this.isPlayerTurn = true;
         this.gameState = 'playing'; // 'playing', 'victory', 'defeat'
-        
+
+        // Sistema de temporizador
+        this.turnTimeLimit = 30000; // 30 segundos por turno
+        this.currentTurnTimer = null;
+        this.timeRemaining = this.turnTimeLimit;
+
+        // Sistema de resumen de combate
+        this.combatSummary = new CombatSummary(scene);
+        this.defeatedEnemies = [];
+
         // UI del sistema de turnos
         this.createTurnUI();
     }
@@ -32,10 +43,15 @@ export class TurnManager {
     // Iniciar el turno de la entidad actual
     startCurrentEntityTurn() {
         const currentEntity = this.getCurrentEntity();
-        
+
         if (!currentEntity || !currentEntity.isAlive) {
             this.nextTurn();
             return;
+        }
+
+        // Limpiar temporizador anterior
+        if (this.currentTurnTimer) {
+            this.currentTurnTimer.destroy();
         }
 
         // Terminar turno de la entidad anterior
@@ -50,7 +66,13 @@ export class TurnManager {
 
         // Determinar si es turno del jugador o enemigo
         this.isPlayerTurn = currentEntity.constructor.name === 'Player';
-        
+
+        // Configurar temporizador solo para el jugador
+        if (this.isPlayerTurn) {
+            this.timeRemaining = this.turnTimeLimit;
+            this.startTurnTimer();
+        }
+
         // Si es turno del enemigo, ejecutar IA después de un breve delay
         if (!this.isPlayerTurn && currentEntity.performAI) {
             this.scene.time.delayedCall(1000, () => {
@@ -64,6 +86,23 @@ export class TurnManager {
         }
 
         this.updateTurnUI();
+    }
+
+    // Iniciar temporizador de turno
+    startTurnTimer() {
+        this.currentTurnTimer = this.scene.time.addEvent({
+            delay: 100, // Actualizar cada 100ms
+            callback: () => {
+                this.timeRemaining -= 100;
+                this.updateTurnUI();
+
+                if (this.timeRemaining <= 0) {
+                    // Tiempo agotado, pasar al siguiente turno
+                    this.nextTurn();
+                }
+            },
+            loop: true
+        });
     }
 
     // Pasar al siguiente turno
@@ -121,11 +160,36 @@ export class TurnManager {
         // Verificar victoria (todos los enemigos muertos)
         if (aliveEnemies.length === 0) {
             this.gameState = 'victory';
-            this.showGameEndMessage('¡Victoria!', 0x00ff00);
+            this.handleVictory(player);
             return true;
         }
 
         return false;
+    }
+
+    // Manejar victoria del jugador
+    handleVictory(player) {
+        // Calcular experiencia ganada
+        const experienceGained = CombatSummary.calculateExperience(this.defeatedEnemies);
+
+        // Verificar subida de nivel
+        const leveledUp = CombatSummary.checkLevelUp(player, experienceGained);
+
+        if (leveledUp) {
+            // Actualizar UI del jugador si subió de nivel
+            this.updateTurnUI();
+        }
+
+        // Mostrar resumen de combate
+        this.combatSummary.showSummary(this.defeatedEnemies, experienceGained, player);
+    }
+
+    // Registrar enemigo derrotado
+    registerDefeatedEnemy(enemy) {
+        this.defeatedEnemies.push({
+            type: enemy.type,
+            name: enemy.constructor.name
+        });
     }
 
     // Mostrar mensaje de fin de juego
@@ -167,11 +231,11 @@ export class TurnManager {
     // Crear interfaz de usuario para los turnos
     createTurnUI() {
         // Panel de información de turno
-        this.turnPanel = this.scene.add.rectangle(100, 50, 180, 80, 0x000000, 0.7);
+        this.turnPanel = this.scene.add.rectangle(100, 60, 180, 100, 0x000000, 0.7);
         this.turnPanel.setDepth(1500);
 
         // Texto del turno actual
-        this.turnText = this.scene.add.text(100, 30, 'Turno: 1', {
+        this.turnText = this.scene.add.text(100, 25, 'Turno: 1', {
             fontSize: '16px',
             fontFamily: 'Arial',
             color: '#ffffff'
@@ -180,7 +244,7 @@ export class TurnManager {
         this.turnText.setDepth(1501);
 
         // Texto de la entidad actual
-        this.entityText = this.scene.add.text(100, 50, 'Jugador', {
+        this.entityText = this.scene.add.text(100, 45, 'Jugador', {
             fontSize: '14px',
             fontFamily: 'Arial',
             color: '#00ff00'
@@ -188,8 +252,17 @@ export class TurnManager {
         this.entityText.setOrigin(0.5);
         this.entityText.setDepth(1501);
 
+        // Texto del temporizador
+        this.timerText = this.scene.add.text(100, 65, 'Tiempo: 30s', {
+            fontSize: '12px',
+            fontFamily: 'Arial',
+            color: '#ffff00'
+        });
+        this.timerText.setOrigin(0.5);
+        this.timerText.setDepth(1501);
+
         // Botón de terminar turno (solo visible en turno del jugador)
-        this.endTurnButton = this.scene.add.text(100, 70, 'Terminar Turno', {
+        this.endTurnButton = this.scene.add.text(100, 85, 'Terminar Turno', {
             fontSize: '12px',
             fontFamily: 'Arial',
             color: '#ffffff',
@@ -243,14 +316,33 @@ export class TurnManager {
     // Actualizar la interfaz de usuario
     updateTurnUI() {
         const currentEntity = this.getCurrentEntity();
-        
+
         // Actualizar información de turno
         this.turnText.setText(`Turno: ${this.currentTurn}`);
-        
+
         if (currentEntity) {
             const entityName = currentEntity.constructor.name === 'Player' ? 'Jugador' : 'Enemigo';
             this.entityText.setText(entityName);
             this.entityText.setColor(this.isPlayerTurn ? '#00ff00' : '#ff0000');
+        }
+
+        // Actualizar temporizador
+        if (this.isPlayerTurn) {
+            const seconds = Math.ceil(this.timeRemaining / 1000);
+            this.timerText.setText(`Tiempo: ${seconds}s`);
+
+            // Cambiar color según el tiempo restante
+            if (seconds <= 5) {
+                this.timerText.setColor('#ff0000'); // Rojo cuando quedan 5 segundos
+            } else if (seconds <= 10) {
+                this.timerText.setColor('#ff8800'); // Naranja cuando quedan 10 segundos
+            } else {
+                this.timerText.setColor('#ffff00'); // Amarillo normal
+            }
+
+            this.timerText.setVisible(true);
+        } else {
+            this.timerText.setVisible(false);
         }
 
         // Mostrar/ocultar botón de terminar turno
@@ -267,9 +359,13 @@ export class TurnManager {
 
     // Limpiar el sistema de turnos
     destroy() {
+        if (this.currentTurnTimer) {
+            this.currentTurnTimer.destroy();
+        }
         if (this.turnPanel) this.turnPanel.destroy();
         if (this.turnText) this.turnText.destroy();
         if (this.entityText) this.entityText.destroy();
+        if (this.timerText) this.timerText.destroy();
         if (this.endTurnButton) this.endTurnButton.destroy();
         if (this.playerPanel) this.playerPanel.destroy();
         if (this.playerHPText) this.playerHPText.destroy();

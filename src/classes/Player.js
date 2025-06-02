@@ -1,14 +1,15 @@
+import { SpellLibrary } from './Spell.js';
+
 export class Player {
-    constructor(scene, gridX, gridY) {
+    constructor(scene, gridX, gridY, playerClass = 'warrior') {
         this.scene = scene;
         this.gridX = gridX;
         this.gridY = gridY;
+        this.playerClass = playerClass;
 
         // Atributos del jugador
         this.maxHP = 100;
         this.currentHP = 100;
-        this.maxMP = 50;
-        this.currentMP = 50;
         this.attack = 20;
         this.defense = 10;
         this.level = 1;
@@ -24,23 +25,41 @@ export class Player {
         this.isAlive = true;
         this.isPlayerTurn = false;
 
+        // Sistema de hechizos
+        this.spells = this.getSpellsByClass(playerClass);
+        this.selectedSpell = null;
+
         // Crear sprite del jugador
         this.createSprite();
     }
 
-    createSprite() {
-        // Convertir posición de grid a coordenadas isométricas
-        const isoPos = this.scene.grid.gridToIso(this.gridX, this.gridY);
+    // Obtener hechizos según la clase
+    getSpellsByClass(playerClass) {
+        switch (playerClass) {
+            case 'warrior':
+                return SpellLibrary.getWarriorSpells();
+            case 'mage':
+                return SpellLibrary.getMageSpells();
+            case 'archer':
+                return SpellLibrary.getArcherSpells();
+            default:
+                return SpellLibrary.getWarriorSpells();
+        }
+    }
 
-        // Crear sprite en la posición correcta (ajustado al centro del mapa)
+    createSprite() {
+        // Convertir posición de grid a coordenadas de mundo
+        const worldPos = this.scene.grid.gridToWorld(this.gridX, this.gridY);
+
+        // Crear sprite en la posición correcta
         this.sprite = this.scene.add.sprite(
-            640 + isoPos.x,
-            300 + isoPos.y,
+            worldPos.x,
+            worldPos.y,
             'character'
         );
 
         // Configurar profundidad para renderizado correcto
-        this.sprite.setDepth(300 + isoPos.y + 1);
+        this.sprite.setDepth(100);
 
         // Marcar la celda como ocupada
         this.scene.grid.setOccupied(this.gridX, this.gridY, this);
@@ -78,42 +97,94 @@ export class Player {
         this.healthBar.setDepth(this.sprite.depth + 2);
     }
 
-    // Mover el jugador a una nueva posición
+    // Mover el jugador a una nueva posición usando pathfinding
     moveTo(newGridX, newGridY) {
-        if (!this.scene.grid.isWalkable(newGridX, newGridY)) {
+        // Encontrar camino hacia el destino
+        const path = this.scene.grid.findPath(
+            this.gridX, this.gridY,
+            newGridX, newGridY,
+            this.currentMovementPoints
+        );
+
+        if (!path || path.length === 0) {
             return false;
         }
 
-        // Calcular costo de movimiento
-        const distance = this.scene.grid.getDistance(this.gridX, this.gridY, newGridX, newGridY);
+        // Calcular costo real del movimiento
+        const movementCost = path.length - 1; // -1 porque el primer punto es la posición actual
 
-        if (distance > this.currentMovementPoints) {
+        if (movementCost > this.currentMovementPoints) {
             return false;
         }
 
-        // Liberar celda anterior
+        // Ejecutar movimiento animado
+        this.executeMovementPath(path, movementCost);
+
+        return true;
+    }
+
+    // Ejecutar movimiento a lo largo del camino
+    executeMovementPath(path, movementCost) {
+        if (path.length <= 1) return;
+
+        // Liberar celda actual
         this.scene.grid.setFree(this.gridX, this.gridY);
 
-        // Actualizar posición
-        this.gridX = newGridX;
-        this.gridY = newGridY;
+        // Actualizar posición lógica al destino final
+        const finalPos = path[path.length - 1];
+        this.gridX = finalPos.x;
+        this.gridY = finalPos.y;
 
         // Ocupar nueva celda
         this.scene.grid.setOccupied(this.gridX, this.gridY, this);
 
-        // Mover sprite
-        const isoPos = this.scene.grid.gridToIso(this.gridX, this.gridY);
-        this.sprite.setPosition(640 + isoPos.x, 300 + isoPos.y);
-        this.sprite.setDepth(300 + isoPos.y + 1);
-
-        // Mover barra de vida
-        this.healthBarBg.setPosition(this.sprite.x, this.sprite.y - 40);
-        this.healthBar.setPosition(this.sprite.x, this.sprite.y - 40);
+        // Animar movimiento visual
+        this.animateMovement(path, () => {
+            // Callback cuando termina la animación
+            this.updateHealthBarPosition();
+        });
 
         // Reducir puntos de movimiento
-        this.currentMovementPoints -= distance;
+        this.currentMovementPoints -= movementCost;
+    }
 
-        return true;
+    // Animar movimiento del sprite a lo largo del camino
+    animateMovement(path, onComplete) {
+        if (path.length <= 1) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        let currentIndex = 1; // Empezar desde el segundo punto (el primero es la posición actual)
+
+        const moveToNextPoint = () => {
+            if (currentIndex >= path.length) {
+                if (onComplete) onComplete();
+                return;
+            }
+
+            const targetPos = this.scene.grid.gridToWorld(path[currentIndex].x, path[currentIndex].y);
+
+            this.scene.tweens.add({
+                targets: this.sprite,
+                x: targetPos.x,
+                y: targetPos.y,
+                duration: 200,
+                ease: 'Power2',
+                onComplete: () => {
+                    currentIndex++;
+                    moveToNextPoint();
+                }
+            });
+        };
+
+        moveToNextPoint();
+    }
+
+    // Actualizar posición de la barra de vida
+    updateHealthBarPosition() {
+        this.healthBarBg.setPosition(this.sprite.x, this.sprite.y - 40);
+        this.healthBar.setPosition(this.sprite.x, this.sprite.y - 40);
     }
 
     // Atacar a un enemigo
@@ -261,6 +332,36 @@ export class Player {
         this.sprite.clearTint();
     }
 
+    // Lanzar hechizo
+    castSpell(spellIndex, targetX, targetY) {
+        if (spellIndex < 0 || spellIndex >= this.spells.length) {
+            return false;
+        }
+
+        const spell = this.spells[spellIndex];
+        const success = spell.cast(this, targetX, targetY);
+
+        if (success) {
+            // Actualizar barra de maná
+            this.updateHealthBar();
+        }
+
+        return success;
+    }
+
+    // Iniciar turno (actualizado para incluir hechizos)
+    startTurn() {
+        this.isPlayerTurn = true;
+        this.currentActionPoints = this.maxActionPoints;
+        this.currentMovementPoints = this.maxMovementPoints;
+
+        // Reducir enfriamiento de hechizos
+        this.spells.forEach(spell => spell.reduceCooldown());
+
+        // Efecto visual de turno activo
+        this.sprite.setTint(0xffff00);
+    }
+
     // Obtener celdas de movimiento válidas
     getValidMoveCells() {
         return this.scene.grid.getCellsInRange(
@@ -268,5 +369,18 @@ export class Player {
             this.gridY,
             this.currentMovementPoints
         );
+    }
+
+    // Obtener información de hechizos para la UI
+    getSpellsInfo() {
+        return this.spells.map((spell, index) => ({
+            index,
+            name: spell.name,
+            actionPointCost: spell.actionPointCost,
+            range: spell.range,
+            description: spell.description,
+            cooldown: spell.currentCooldown,
+            canCast: spell.canCast(this, this.gridX, this.gridY).canCast
+        }));
     }
 }

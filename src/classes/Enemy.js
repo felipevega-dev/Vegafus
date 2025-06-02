@@ -55,13 +55,13 @@ export class Enemy {
     }
 
     createSprite() {
-        // Convertir posición de grid a coordenadas isométricas
-        const isoPos = this.scene.grid.gridToIso(this.gridX, this.gridY);
+        // Convertir posición de grid a coordenadas de mundo
+        const worldPos = this.scene.grid.gridToWorld(this.gridX, this.gridY);
 
         // Crear sprite en la posición correcta
         this.sprite = this.scene.add.sprite(
-            640 + isoPos.x,
-            300 + isoPos.y,
+            worldPos.x,
+            worldPos.y,
             this.spriteKey
         );
 
@@ -69,7 +69,7 @@ export class Enemy {
         this.sprite.setTint(this.tint);
 
         // Configurar profundidad para renderizado correcto
-        this.sprite.setDepth(300 + isoPos.y + 1);
+        this.sprite.setDepth(100);
 
         // Marcar la celda como ocupada
         this.scene.grid.setOccupied(this.gridX, this.gridY, this);
@@ -131,9 +131,9 @@ export class Enemy {
         this.scene.grid.setOccupied(this.gridX, this.gridY, this);
 
         // Mover sprite
-        const isoPos = this.scene.grid.gridToIso(this.gridX, this.gridY);
-        this.sprite.setPosition(640 + isoPos.x, 300 + isoPos.y);
-        this.sprite.setDepth(300 + isoPos.y + 1);
+        const worldPos = this.scene.grid.gridToWorld(this.gridX, this.gridY);
+        this.sprite.setPosition(worldPos.x, worldPos.y);
+        this.sprite.setDepth(100);
 
         // Mover barra de vida
         this.healthBarBg.setPosition(this.sprite.x, this.sprite.y - 40);
@@ -257,8 +257,27 @@ export class Enemy {
         // Liberar celda
         this.scene.grid.setFree(this.gridX, this.gridY);
 
+        // Registrar muerte en el sistema de turnos
+        if (this.scene.turnManager) {
+            this.scene.turnManager.registerDefeatedEnemy(this);
+        }
+
         // Dar recompensa al jugador
-        console.log('¡Enemigo derrotado!');
+        console.log(`¡${this.getDisplayName()} derrotado!`);
+    }
+
+    // Obtener nombre para mostrar
+    getDisplayName() {
+        switch (this.type) {
+            case 'basic':
+                return 'Goblin Básico';
+            case 'strong':
+                return 'Orco Fuerte';
+            case 'fast':
+                return 'Esqueleto Rápido';
+            default:
+                return 'Enemigo';
+        }
     }
 
     // IA básica del enemigo
