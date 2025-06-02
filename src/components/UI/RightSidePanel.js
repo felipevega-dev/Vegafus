@@ -346,37 +346,27 @@ export class RightSidePanel {
         this.spellsModalTitle.setOrigin(0.5);
         this.spellsModalTitle.setDepth(depths.MODAL_ELEMENTS + 1);
 
-        // Contenido de hechizos
+        // Crear hechizos con iconos y mejor diseño
         const spells = this.player.getSpellsInfo ? this.player.getSpellsInfo() : [];
-        let spellsText = '';
 
         if (spells.length === 0) {
-            spellsText = 'No tienes hechizos disponibles.\n\nLos hechizos se desbloquean según tu raza:\n\n• Tierra - Hechizos de defensa\n• Fuego - Hechizos de ataque\n• Agua - Hechizos de curación\n• Aire - Hechizos de velocidad\n\nMejora tus características elementales\npara aumentar el daño de tus hechizos.';
+            // Mensaje cuando no hay hechizos
+            this.spellsModalContent = this.scene.add.text(
+                LayoutConfig.GAME_WIDTH / 2,
+                LayoutConfig.GAME_HEIGHT / 2 - 50,
+                'No tienes hechizos disponibles.\n\nLos hechizos se desbloquean según tu raza:\n\n🟤 Tierra - Hechizos de defensa\n🔴 Fuego - Hechizos de ataque\n🔵 Agua - Hechizos de curación\n⚪ Aire - Hechizos de velocidad\n\nMejora tus características elementales\npara aumentar el daño de tus hechizos.',
+                LayoutUtils.createTextStyle('BODY', {
+                    color: colors.TEXT_PRIMARY,
+                    align: 'center',
+                    wordWrap: { width: 550 }
+                })
+            );
+            this.spellsModalContent.setOrigin(0.5);
+            this.spellsModalContent.setDepth(depths.MODAL_ELEMENTS + 1);
         } else {
-            spellsText = `Hechizos disponibles: ${spells.length}\n\n`;
-            spells.forEach((spell, index) => {
-                spellsText += `${index + 1}. ${spell.name}\n`;
-                spellsText += `   Elemento: ${spell.element}\n`;
-                spellsText += `   PA: ${spell.actionPointCost} | Rango: ${spell.range}\n`;
-                if (spell.description) {
-                    spellsText += `   ${spell.description}\n`;
-                }
-                spellsText += '\n';
-            });
+            // Crear lista de hechizos con iconos
+            this.createSpellsList(spells, colors, depths);
         }
-
-        this.spellsModalContent = this.scene.add.text(
-            LayoutConfig.GAME_WIDTH / 2,
-            LayoutConfig.GAME_HEIGHT / 2 - 70,
-            spellsText,
-            LayoutUtils.createTextStyle('BODY', {
-                color: colors.TEXT_PRIMARY,
-                align: 'center',
-                wordWrap: { width: 550 }
-            })
-        );
-        this.spellsModalContent.setOrigin(0.5);
-        this.spellsModalContent.setDepth(depths.MODAL_ELEMENTS + 1);
 
         // Botón de cerrar
         this.closeSpellsButton = this.scene.add.text(
@@ -396,17 +386,152 @@ export class RightSidePanel {
             this.closeSpellsButton.setColor(colors.TEXT_SECONDARY);
         });
 
-        // Guardar referencias
-        this.spellsModalElements = [
+        // Inicializar array si no existe
+        if (!this.spellsModalElements) {
+            this.spellsModalElements = [];
+        }
+
+        // Guardar referencias de elementos base
+        this.spellsModalElements.push(
             this.spellsModalBg,
             this.spellsModalPanel,
             this.spellsModalTitle,
-            this.spellsModalContent,
             this.closeSpellsButton
-        ];
+        );
+
+        // Si hay contenido de texto (cuando no hay hechizos), agregarlo también
+        if (this.spellsModalContent) {
+            this.spellsModalElements.push(this.spellsModalContent);
+        }
 
         // Atajo ESC para cerrar
         this.scene.input.keyboard.once('keydown-ESC', () => this.hideSpellsModal());
+    }
+
+    createSpellsList(spells, colors, depths) {
+        const startY = LayoutConfig.GAME_HEIGHT / 2 - 150;
+        const spellHeight = 70;
+
+        spells.forEach((spell, index) => {
+            const y = startY + (index * spellHeight);
+
+            // Obtener color del elemento
+            const elementColor = this.getElementColor(spell.element);
+            const elementIcon = this.getElementIcon(spell.element);
+
+            // Fondo del hechizo
+            const spellBg = this.scene.add.rectangle(
+                LayoutConfig.GAME_WIDTH / 2,
+                y,
+                550,
+                60,
+                colors.BUTTON_BG,
+                0.8
+            );
+            spellBg.setDepth(depths.MODAL_ELEMENTS + 1);
+            spellBg.setStrokeStyle(2, elementColor);
+
+            // Icono del elemento
+            const iconBg = this.scene.add.circle(
+                LayoutConfig.GAME_WIDTH / 2 - 220,
+                y,
+                20,
+                elementColor,
+                0.9
+            );
+            iconBg.setDepth(depths.MODAL_ELEMENTS + 2);
+
+            const iconText = this.scene.add.text(
+                LayoutConfig.GAME_WIDTH / 2 - 220,
+                y,
+                elementIcon,
+                LayoutUtils.createTextStyle('BUTTON', {
+                    color: '#ffffff',
+                    fontSize: '16px'
+                })
+            );
+            iconText.setOrigin(0.5);
+            iconText.setDepth(depths.MODAL_ELEMENTS + 3);
+
+            // Nombre del hechizo
+            const spellName = this.scene.add.text(
+                LayoutConfig.GAME_WIDTH / 2 - 180,
+                y - 15,
+                spell.name,
+                LayoutUtils.createTextStyle('BUTTON', {
+                    color: colors.TEXT_ACCENT,
+                    fontSize: '14px'
+                })
+            );
+            spellName.setOrigin(0, 0.5);
+            spellName.setDepth(depths.MODAL_ELEMENTS + 2);
+
+            // Información del hechizo
+            const elementName = this.getElementName(spell.element);
+            const damageText = spell.baseDamage ? ` | Daño: ${spell.baseDamage}` : '';
+            const spellInfo = this.scene.add.text(
+                LayoutConfig.GAME_WIDTH / 2 - 180,
+                y + 5,
+                `${elementName} | PA: ${spell.actionPointCost} | Rango: ${spell.range}${damageText}`,
+                LayoutUtils.createTextStyle('BODY', {
+                    color: colors.TEXT_SECONDARY,
+                    fontSize: '11px'
+                })
+            );
+            spellInfo.setOrigin(0, 0.5);
+            spellInfo.setDepth(depths.MODAL_ELEMENTS + 2);
+
+            // Descripción del hechizo
+            const spellDesc = this.scene.add.text(
+                LayoutConfig.GAME_WIDTH / 2 - 180,
+                y + 20,
+                spell.description || 'Sin descripción',
+                LayoutUtils.createTextStyle('BODY', {
+                    color: colors.TEXT_PRIMARY,
+                    fontSize: '10px',
+                    wordWrap: { width: 350 }
+                })
+            );
+            spellDesc.setOrigin(0, 0.5);
+            spellDesc.setDepth(depths.MODAL_ELEMENTS + 2);
+
+            // Guardar elementos para limpiar después
+            if (!this.spellsModalElements) this.spellsModalElements = [];
+            this.spellsModalElements.push(spellBg, iconBg, iconText, spellName, spellInfo, spellDesc);
+        });
+    }
+
+    getElementColor(element) {
+        const colors = {
+            'tierra': 0x8B4513,  // Marrón
+            'fuego': 0xFF4500,   // Rojo-naranja
+            'agua': 0x1E90FF,    // Azul
+            'aire': 0xE6E6FA,    // Lavanda claro
+            'undefined': 0x666666 // Gris para undefined
+        };
+        return colors[element] || colors['undefined'];
+    }
+
+    getElementIcon(element) {
+        const icons = {
+            'tierra': '🌍',
+            'fuego': '🔥',
+            'agua': '💧',
+            'aire': '💨',
+            'undefined': '❓'
+        };
+        return icons[element] || icons['undefined'];
+    }
+
+    getElementName(element) {
+        const names = {
+            'tierra': 'Tierra',
+            'fuego': 'Fuego',
+            'agua': 'Agua',
+            'aire': 'Aire',
+            'undefined': 'Desconocido'
+        };
+        return names[element] || names['undefined'];
     }
 
     hideSpellsModal() {

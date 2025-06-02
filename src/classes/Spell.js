@@ -1,5 +1,5 @@
 export class Spell {
-    constructor(name, actionPointCost, range, description, effect, cooldown = 0, element = null) {
+    constructor(name, actionPointCost, range, description, effect, cooldown = 0, element = null, baseDamage = null) {
         this.name = name;
         this.actionPointCost = actionPointCost;
         this.range = range;
@@ -8,6 +8,7 @@ export class Spell {
         this.cooldown = cooldown; // Turnos de enfriamiento
         this.currentCooldown = 0;
         this.element = element; // Elemento del hechizo: 'tierra', 'fuego', 'agua', 'aire'
+        this.baseDamage = baseDamage; // Daño base del hechizo (para mostrar en UI)
     }
 
     // Verificar si el hechizo puede ser usado
@@ -133,7 +134,8 @@ export class SpellLibrary {
                     }
                 },
                 1, // 1 turno de cooldown
-                'tierra' // Elemento tierra
+                'tierra', // Elemento tierra
+                '30-35' // Daño base aproximado (ataque * 1.5)
             ),
             new Spell(
                 'Llama Ardiente',
@@ -160,7 +162,8 @@ export class SpellLibrary {
                     }
                 },
                 0, // Sin cooldown
-                'fuego' // Elemento fuego
+                'fuego', // Elemento fuego
+                '28-32' // Daño base aproximado (ataque + 10)
             ),
             new Spell(
                 'Tormenta Helada',
@@ -187,7 +190,8 @@ export class SpellLibrary {
                     }
                 },
                 1, // 1 turno de cooldown
-                'agua' // Elemento agua
+                'agua', // Elemento agua
+                '26-30' // Daño base aproximado (ataque + 8)
             ),
             new Spell(
                 'Viento Cortante',
@@ -214,7 +218,8 @@ export class SpellLibrary {
                     }
                 },
                 0, // Sin cooldown
-                'aire' // Elemento aire
+                'aire', // Elemento aire
+                '24-28' // Daño base aproximado (ataque + 6)
             )
         ];
     }

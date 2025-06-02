@@ -476,6 +476,8 @@ export class Player {
             actionPointCost: spell.actionPointCost,
             range: spell.range,
             description: spell.description,
+            element: spell.element,
+            baseDamage: spell.baseDamage,
             cooldown: spell.currentCooldown,
             canCast: this.currentActionPoints >= spell.actionPointCost && spell.currentCooldown === 0
         }));
