@@ -1,0 +1,229 @@
+const express = require('express');
+const Character = require('../models/Character');
+const auth = require('../middleware/auth');
+
+const router = express.Router();
+
+// Todas las rutas requieren autenticación
+router.use(auth);
+
+// Obtener todos los personajes del usuario
+router.get('/', async (req, res) => {
+    try {
+        const characters = await Character.find({ 
+            userId: req.userId,
+            isActive: true 
+        }).sort({ 'gameStats.lastSaved': -1 })
+
+        res.json({
+            message: 'Personajes obtenidos exitosamente',
+            characters: characters.map(char => char.toGameJSON())
+        });
+    } catch (error) {
+        console.error('Error obteniendo personajes:', error);
+        res.status(500).json({
+            message: 'Error interno del servidor'
+        });
+    }
+});
+
+// Obtener un personaje específico
+router.get('/:characterId', async (req, res) => {
+    try {
+        const character = await Character.findOne({
+            _id: req.params.characterId,
+            userId: req.userId,
+            isActive: true
+        });
+
+        if (!character) {
+            return res.status(404).json({
+                message: 'Personaje no encontrado'
+            });
+        }
+
+        res.json({
+            message: 'Personaje obtenido exitosamente',
+            character: character.toGameJSON()
+        });
+    } catch (error) {
+        console.error('Error obteniendo personaje:', error);
+        res.status(500).json({
+            message: 'Error interno del servidor'
+        });
+    }
+});
+
+// Crear nuevo personaje
+router.post('/', async (req, res) => {
+    try {
+        const { name, class: characterClass } = req.body;
+
+        // Validar datos requeridos
+        if (!name || !characterClass) {
+            return res.status(400).json({
+                message: 'Nombre y clase son requeridos'
+            });
+        }
+
+        // Verificar que el usuario no tenga ya un personaje con ese nombre
+        const existingCharacter = await Character.findOne({
+            userId: req.userId,
+            name: name,
+            isActive: true
+        });
+
+        if (existingCharacter) {
+            return res.status(400).json({
+                message: 'Ya tienes un personaje con ese nombre'
+            });
+        }
+
+        // Configurar estadísticas iniciales según la clase
+        let initialStats = {
+            hp: { current: 100, max: 100 },
+            mp: { current: 50, max: 50 },
+            attack: 20,
+            defense: 10,
+            movementPoints: 3,
+            actionPoints: 6
+        };
+
+        // Ajustar stats según la clase
+        switch (characterClass) {
+            case 'warrior':
+                initialStats.hp = { current: 120, max: 120 };
+                initialStats.attack = 25;
+                initialStats.defense = 15;
+                initialStats.mp = { current: 30, max: 30 };
+                break;
+            case 'archer':
+                initialStats.movementPoints = 4;
+                initialStats.attack = 22;
+                initialStats.defense = 8;
+                break;
+            case 'mage':
+                initialStats.mp = { current: 70, max: 70 };
+                initialStats.attack = 18;
+                initialStats.actionPoints = 7;
+                break;
+        }
+
+        // Crear personaje
+        const character = new Character({
+            userId: req.userId,
+            name,
+            class: characterClass,
+            stats: initialStats,
+            spells: [
+                { spellId: 'fireball', level: 1, unlocked: true },
+                { spellId: 'heal', level: 1, unlocked: true },
+                { spellId: 'lightning', level: 1, unlocked: true }
+            ]
+        });
+
+        await character.save();
+
+        res.status(201).json({
+            message: 'Personaje creado exitosamente',
+            character: character.toGameJSON()
+        });
+
+    } catch (error) {
+        console.error('Error creando personaje:', error);
+        
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({
+                message: 'Datos inválidos',
+                errors: Object.values(error.errors).map(err => err.message)
+            });
+        }
+
+        res.status(500).json({
+            message: 'Error interno del servidor'
+        });
+    }
+});
+
+// Actualizar personaje (guardar progreso)
+router.put('/:characterId', async (req, res) => {
+    try {
+        const character = await Character.findOne({
+            _id: req.params.characterId,
+            userId: req.userId,
+            isActive: true
+        });
+
+        if (!character) {
+            return res.status(404).json({
+                message: 'Personaje no encontrado'
+            });
+        }
+
+        // Campos que se pueden actualizar
+        const allowedUpdates = [
+            'level', 'experience', 'stats', 'position', 
+            'inventory', 'gameStats'
+        ];
+
+        // Actualizar solo los campos permitidos
+        allowedUpdates.forEach(field => {
+            if (req.body[field] !== undefined) {
+                character[field] = req.body[field];
+            }
+        });
+
+        // Verificar si puede subir de nivel
+        while (character.canLevelUp()) {
+            character.levelUp();
+        }
+
+        // Actualizar timestamp de guardado
+        character.gameStats.lastSaved = new Date();
+
+        await character.save();
+
+        res.json({
+            message: 'Personaje actualizado exitosamente',
+            character: character.toGameJSON()
+        });
+
+    } catch (error) {
+        console.error('Error actualizando personaje:', error);
+        res.status(500).json({
+            message: 'Error interno del servidor'
+        });
+    }
+});
+
+// Eliminar personaje (soft delete)
+router.delete('/:characterId', async (req, res) => {
+    try {
+        const character = await Character.findOne({
+            _id: req.params.characterId,
+            userId: req.userId,
+            isActive: true
+        });
+
+        if (!character) {
+            return res.status(404).json({
+                message: 'Personaje no encontrado'
+            });
+        }
+
+        character.isActive = false;
+        await character.save();
+
+        res.json({
+            message: 'Personaje eliminado exitosamente'
+        });
+
+    } catch (error) {
+        console.error('Error eliminando personaje:', error);
+        res.status(500).json({
+            message: 'Error interno del servidor'
+        });
+    }
+});
+
+module.exports = router;

@@ -12,9 +12,15 @@ export class ExplorationMap extends Phaser.Scene {
         this.load.image('enemy', 'assets/images/enemy.png');
     }
 
-    create() {
+    create(data) {
         console.log('Iniciando mapa de exploración');
-        
+
+        // Guardar datos del usuario autenticado
+        this.userData = data?.user || null;
+        if (this.userData) {
+            console.log('Usuario autenticado:', this.userData.username);
+        }
+
         // Crear grid más grande para exploración
         this.grid = new Grid(this, 30, 20); // 30x20 para exploración
         
@@ -398,6 +404,28 @@ export class ExplorationMap extends Phaser.Scene {
             fontFamily: 'Arial',
             color: '#ffffff'
         }).setDepth(1001);
+
+        // Mostrar información del usuario y botón de logout si está autenticado
+        if (this.userData) {
+            this.add.text(1100, 20, `Usuario: ${this.userData.username}`, {
+                fontSize: '12px',
+                fontFamily: 'Arial',
+                color: '#ffffff'
+            }).setDepth(1001);
+
+            // Botón de logout
+            const logoutButton = this.add.text(1200, 40, 'LOGOUT', {
+                fontSize: '12px',
+                fontFamily: 'Arial',
+                color: '#ff4444',
+                backgroundColor: '#333333',
+                padding: { x: 8, y: 4 }
+            });
+            logoutButton.setOrigin(0.5);
+            logoutButton.setDepth(1001);
+            logoutButton.setInteractive();
+            logoutButton.on('pointerdown', () => this.handleLogout());
+        }
     }
 
     createExperienceBar() {
@@ -486,5 +514,22 @@ export class ExplorationMap extends Phaser.Scene {
             }
         });
         this.movementIndicators = [];
+    }
+
+    async handleLogout() {
+        try {
+            // Importar apiClient dinámicamente
+            const { apiClient } = await import('../utils/ApiClient.js');
+
+            await apiClient.logout();
+            console.log('Logout exitoso');
+
+            // Volver a la escena de autenticación
+            this.scene.start('AuthSceneHTML');
+        } catch (error) {
+            console.error('Error en logout:', error);
+            // Aún así volver a la pantalla de login
+            this.scene.start('AuthSceneHTML');
+        }
     }
 }
