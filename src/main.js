@@ -3,6 +3,8 @@ import { AuthSceneHTML } from './scenes/AuthSceneHTML.js';
 import { IsometricMap } from './scenes/IsometricMap.js';
 import { ExplorationMap } from './scenes/ExplorationMap.js';
 import { CharacteristicsScene } from './scenes/CharacteristicsScene.js';
+import { CharacterSelectionScene } from './scenes/CharacterSelectionScene.js';
+import { CharacterCreationScene } from './scenes/CharacterCreationScene.js';
 
 const config = {
     type: Phaser.AUTO,
@@ -11,7 +13,7 @@ const config = {
     backgroundColor: '#000000',
     pixelArt: true,
     parent: 'game-container', // Especificar el contenedor
-    scene: [AuthSceneHTML, ExplorationMap, IsometricMap, CharacteristicsScene], // Empezar con autenticación HTML
+    scene: [AuthSceneHTML, CharacterSelectionScene, CharacterCreationScene, ExplorationMap, IsometricMap, CharacteristicsScene], // Empezar con autenticación HTML
     physics: {
         default: 'arcade',
         arcade: {

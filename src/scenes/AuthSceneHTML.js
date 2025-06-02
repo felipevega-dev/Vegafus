@@ -128,9 +128,9 @@ export class AuthSceneHTML extends Phaser.Scene {
             const response = await apiClient.login(username, password);
             console.log('Login exitoso:', response);
             
-            // Ocultar overlay y ir al juego
+            // Ocultar overlay y ir a selección de personajes
             this.hideAuthOverlay();
-            this.scene.start('ExplorationMap', { user: response.user });
+            this.scene.start('CharacterSelectionScene', { userData: response.user });
         } catch (error) {
             this.showError('login', error.message);
         } finally {
@@ -175,9 +175,9 @@ export class AuthSceneHTML extends Phaser.Scene {
             const response = await apiClient.register(username, email, password);
             console.log('Registro exitoso:', response);
             
-            // Ocultar overlay y ir al juego
+            // Ocultar overlay y ir a selección de personajes
             this.hideAuthOverlay();
-            this.scene.start('ExplorationMap', { user: response.user });
+            this.scene.start('CharacterSelectionScene', { userData: response.user });
         } catch (error) {
             this.showError('register', error.message);
         } finally {
@@ -191,7 +191,7 @@ export class AuthSceneHTML extends Phaser.Scene {
             if (user) {
                 console.log('Usuario ya autenticado:', user);
                 this.hideAuthOverlay();
-                this.scene.start('ExplorationMap', { user });
+                this.scene.start('CharacterSelectionScene', { userData: user });
             }
         } catch (error) {
             console.log('No hay sesión activa');

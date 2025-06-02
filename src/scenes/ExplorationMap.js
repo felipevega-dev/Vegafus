@@ -33,13 +33,17 @@ export class ExplorationMap extends Phaser.Scene {
         console.log('Iniciando mapa de exploración');
 
         // Guardar datos del usuario autenticado
-        this.userData = data?.user || null;
+        this.userData = data?.userData || data?.user || null;
         if (this.userData) {
             console.log('Usuario autenticado:', this.userData.username);
         }
 
-        // Recuperar ID del personaje si viene del combate
-        this.currentCharacterId = this.registry.get('currentCharacterId') || null;
+        // Obtener ID del personaje (puede venir de la selección o del combate)
+        this.currentCharacterId = data?.characterId || this.registry.get('currentCharacterId') || null;
+
+        if (this.currentCharacterId) {
+            console.log('🎭 Personaje seleccionado ID:', this.currentCharacterId);
+        }
 
         // Verificar si viene del combate (para recargar datos del backend)
         this.comingFromCombat = this.registry.get('playerData') !== null;
@@ -204,17 +208,53 @@ export class ExplorationMap extends Phaser.Scene {
     async loadPlayerFromBackend() {
         const { apiClient } = await import('../utils/ApiClient.js');
 
-        // Obtener personajes del usuario
-        console.log('🔍 Buscando personajes en el backend...');
-        const response = await apiClient.getCharacters();
-        const characters = response.characters;
+        let character = null;
 
-        console.log('📋 Respuesta del backend:', response);
-        console.log('👥 Personajes encontrados:', characters?.length || 0);
+        if (this.currentCharacterId) {
+            // Cargar personaje específico por ID
+            console.log('🔍 Cargando personaje específico:', this.currentCharacterId);
+            try {
+                const response = await fetch(`http://localhost:3000/api/characters/${this.currentCharacterId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
 
-        if (characters && characters.length > 0) {
-            // Por ahora, usar el primer personaje (más tarde podemos hacer selección)
-            const character = characters[0];
+                if (response.ok) {
+                    const data = await response.json();
+                    character = data.character;
+                    console.log('📥 Personaje específico cargado:', character.name);
+                } else {
+                    throw new Error('Personaje no encontrado');
+                }
+            } catch (error) {
+                console.error('❌ Error cargando personaje específico:', error);
+                // Fallback: cargar cualquier personaje disponible
+                const response = await apiClient.getCharacters();
+                const characters = response.characters;
+                if (characters && characters.length > 0) {
+                    character = characters[0];
+                    this.currentCharacterId = character.id;
+                }
+            }
+        } else {
+            // No hay ID específico, cargar el primer personaje disponible
+            console.log('🔍 Buscando personajes en el backend...');
+            const response = await apiClient.getCharacters();
+            const characters = response.characters;
+
+            console.log('📋 Respuesta del backend:', response);
+            console.log('👥 Personajes encontrados:', characters?.length || 0);
+
+            if (characters && characters.length > 0) {
+                character = characters[0];
+                this.currentCharacterId = character.id;
+            }
+        }
+
+        if (character) {
 
             console.log('📥 Personaje cargado del backend:', character);
 

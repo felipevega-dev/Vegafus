@@ -66,6 +66,18 @@ router.post('/', async (req, res) => {
             });
         }
 
+        // Verificar límite de personajes (máximo 5)
+        const characterCount = await Character.countDocuments({
+            userId: req.userId,
+            isActive: true
+        });
+
+        if (characterCount >= 5) {
+            return res.status(400).json({
+                message: 'Máximo 5 personajes por cuenta'
+            });
+        }
+
         // Verificar que el usuario no tenga ya un personaje con ese nombre
         const existingCharacter = await Character.findOne({
             userId: req.userId,
