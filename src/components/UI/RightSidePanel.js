@@ -111,10 +111,9 @@ export class RightSidePanel {
         console.log('🎮 Creando botones del menú...');
 
         const buttons = [
-            { text: 'Inventario', key: 'I', action: () => this.showInventory() },
+            { text: 'Inventario', key: 'I', action: () => this.showInventoryModal() },
             { text: 'Características', key: 'C', action: () => this.showCharacteristics() },
-            { text: 'Hechizos', key: 'H', action: () => this.showSpells() },
-            { text: 'Estadísticas', key: 'E', action: () => this.showStats() }
+            { text: 'Hechizos', key: 'H', action: () => this.showSpellsModal() }
         ];
 
         const colors = LayoutConfig.COLORS;
@@ -169,32 +168,128 @@ export class RightSidePanel {
 
     setupKeyboardShortcuts() {
         // Inventario (I)
-        this.scene.input.keyboard.on('keydown-I', () => this.showInventory());
-        
-        // Características (C) - ya existe, pero podemos sobrescribirlo
+        this.scene.input.keyboard.on('keydown-I', () => this.showInventoryModal());
+
+        // Características (C)
         this.scene.input.keyboard.on('keydown-C', () => this.showCharacteristics());
-        
+
         // Hechizos (H)
-        this.scene.input.keyboard.on('keydown-H', () => this.showSpells());
-        
-        // Estadísticas (E)
-        this.scene.input.keyboard.on('keydown-E', () => this.showStats());
+        this.scene.input.keyboard.on('keydown-H', () => this.showSpellsModal());
     }
 
-    showInventory() {
-        console.log('🎒 Abriendo inventario...');
-        this.activePanel = 'inventory';
+    showInventoryModal() {
+        console.log('🎒 Abriendo modal de inventario...');
+        this.createInventoryModal();
+    }
 
-        // Abrir el panel de inventario detallado
-        if (this.scene.inventoryPanel) {
-            console.log('🎒 Usando panel de inventario existente');
-            this.scene.inventoryPanel.show();
+    createInventoryModal() {
+        const colors = LayoutConfig.COLORS;
+        const depths = LayoutConfig.DEPTHS;
+
+        // Fondo semi-transparente
+        this.inventoryModalBg = this.scene.add.rectangle(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2,
+            LayoutConfig.GAME_WIDTH,
+            LayoutConfig.GAME_HEIGHT,
+            0x000000,
+            0.7
+        );
+        this.inventoryModalBg.setDepth(depths.MODAL_BACKGROUND);
+        this.inventoryModalBg.setInteractive();
+        this.inventoryModalBg.on('pointerdown', () => this.hideInventoryModal());
+
+        // Panel del inventario
+        this.inventoryModalPanel = this.scene.add.rectangle(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2,
+            500,
+            400,
+            colors.PANEL_BG,
+            0.95
+        );
+        this.inventoryModalPanel.setDepth(depths.MODAL_ELEMENTS);
+        this.inventoryModalPanel.setStrokeStyle(3, colors.PANEL_BORDER);
+
+        // Título del modal
+        this.inventoryModalTitle = this.scene.add.text(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2 - 170,
+            'INVENTARIO',
+            LayoutUtils.createTextStyle('TITLE', { color: colors.TEXT_ACCENT })
+        );
+        this.inventoryModalTitle.setOrigin(0.5);
+        this.inventoryModalTitle.setDepth(depths.MODAL_ELEMENTS + 1);
+
+        // Contenido del inventario
+        const items = this.player.inventory || [];
+        let inventoryText = '';
+
+        if (items.length === 0) {
+            inventoryText = 'Tu inventario está vacío.\n\nAquí aparecerán los objetos\nque encuentres en tu aventura.\n\n• Armas\n• Armaduras\n• Pociones\n• Objetos especiales';
         } else {
-            // Fallback: mostrar contenido básico en el panel lateral
-            console.log('🎒 Mostrando inventario en panel lateral');
-            const content = this.getInventoryContent();
-            console.log('🎒 Contenido del inventario:', content);
-            this.updateContent('INVENTARIO', content);
+            inventoryText = `Objetos: ${items.length}\n\n`;
+            items.forEach((item, index) => {
+                inventoryText += `${index + 1}. ${item.name}\n`;
+                if (item.description) {
+                    inventoryText += `   ${item.description}\n`;
+                }
+                inventoryText += '\n';
+            });
+        }
+
+        this.inventoryModalContent = this.scene.add.text(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2 - 50,
+            inventoryText,
+            LayoutUtils.createTextStyle('BODY', {
+                color: colors.TEXT_PRIMARY,
+                align: 'center',
+                wordWrap: { width: 450 }
+            })
+        );
+        this.inventoryModalContent.setOrigin(0.5);
+        this.inventoryModalContent.setDepth(depths.MODAL_ELEMENTS + 1);
+
+        // Botón de cerrar
+        this.closeInventoryButton = this.scene.add.text(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2 + 150,
+            'Cerrar (ESC)',
+            LayoutUtils.createTextStyle('BUTTON', { color: colors.TEXT_SECONDARY })
+        );
+        this.closeInventoryButton.setOrigin(0.5);
+        this.closeInventoryButton.setDepth(depths.MODAL_ELEMENTS + 1);
+        this.closeInventoryButton.setInteractive();
+        this.closeInventoryButton.on('pointerdown', () => this.hideInventoryModal());
+        this.closeInventoryButton.on('pointerover', () => {
+            this.closeInventoryButton.setColor(colors.TEXT_PRIMARY);
+        });
+        this.closeInventoryButton.on('pointerout', () => {
+            this.closeInventoryButton.setColor(colors.TEXT_SECONDARY);
+        });
+
+        // Guardar referencias
+        this.inventoryModalElements = [
+            this.inventoryModalBg,
+            this.inventoryModalPanel,
+            this.inventoryModalTitle,
+            this.inventoryModalContent,
+            this.closeInventoryButton
+        ];
+
+        // Atajo ESC para cerrar
+        this.scene.input.keyboard.once('keydown-ESC', () => this.hideInventoryModal());
+    }
+
+    hideInventoryModal() {
+        if (this.inventoryModalElements) {
+            this.inventoryModalElements.forEach(element => {
+                if (element && element.destroy) {
+                    element.destroy();
+                }
+            });
+            this.inventoryModalElements = null;
         }
     }
 
@@ -207,14 +302,122 @@ export class RightSidePanel {
         });
     }
 
-    showSpells() {
-        this.activePanel = 'spells';
-        this.updateContent('HECHIZOS', this.getSpellsContent());
+    showSpellsModal() {
+        console.log('🔮 Abriendo modal de hechizos...');
+        this.createSpellsModal();
     }
 
-    showStats() {
-        this.activePanel = 'stats';
-        this.updateContent('ESTADÍSTICAS', this.getStatsContent());
+    createSpellsModal() {
+        const colors = LayoutConfig.COLORS;
+        const depths = LayoutConfig.DEPTHS;
+
+        // Fondo semi-transparente
+        this.spellsModalBg = this.scene.add.rectangle(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2,
+            LayoutConfig.GAME_WIDTH,
+            LayoutConfig.GAME_HEIGHT,
+            0x000000,
+            0.7
+        );
+        this.spellsModalBg.setDepth(depths.MODAL_BACKGROUND);
+        this.spellsModalBg.setInteractive();
+        this.spellsModalBg.on('pointerdown', () => this.hideSpellsModal());
+
+        // Panel de hechizos
+        this.spellsModalPanel = this.scene.add.rectangle(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2,
+            600,
+            450,
+            colors.PANEL_BG,
+            0.95
+        );
+        this.spellsModalPanel.setDepth(depths.MODAL_ELEMENTS);
+        this.spellsModalPanel.setStrokeStyle(3, colors.PANEL_BORDER);
+
+        // Título del modal
+        this.spellsModalTitle = this.scene.add.text(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2 - 190,
+            'HECHIZOS',
+            LayoutUtils.createTextStyle('TITLE', { color: colors.TEXT_ACCENT })
+        );
+        this.spellsModalTitle.setOrigin(0.5);
+        this.spellsModalTitle.setDepth(depths.MODAL_ELEMENTS + 1);
+
+        // Contenido de hechizos
+        const spells = this.player.getSpellsInfo ? this.player.getSpellsInfo() : [];
+        let spellsText = '';
+
+        if (spells.length === 0) {
+            spellsText = 'No tienes hechizos disponibles.\n\nLos hechizos se desbloquean según tu raza:\n\n• Tierra - Hechizos de defensa\n• Fuego - Hechizos de ataque\n• Agua - Hechizos de curación\n• Aire - Hechizos de velocidad\n\nMejora tus características elementales\npara aumentar el daño de tus hechizos.';
+        } else {
+            spellsText = `Hechizos disponibles: ${spells.length}\n\n`;
+            spells.forEach((spell, index) => {
+                spellsText += `${index + 1}. ${spell.name}\n`;
+                spellsText += `   Elemento: ${spell.element}\n`;
+                spellsText += `   PA: ${spell.actionPointCost} | Rango: ${spell.range}\n`;
+                if (spell.description) {
+                    spellsText += `   ${spell.description}\n`;
+                }
+                spellsText += '\n';
+            });
+        }
+
+        this.spellsModalContent = this.scene.add.text(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2 - 70,
+            spellsText,
+            LayoutUtils.createTextStyle('BODY', {
+                color: colors.TEXT_PRIMARY,
+                align: 'center',
+                wordWrap: { width: 550 }
+            })
+        );
+        this.spellsModalContent.setOrigin(0.5);
+        this.spellsModalContent.setDepth(depths.MODAL_ELEMENTS + 1);
+
+        // Botón de cerrar
+        this.closeSpellsButton = this.scene.add.text(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2 + 180,
+            'Cerrar (ESC)',
+            LayoutUtils.createTextStyle('BUTTON', { color: colors.TEXT_SECONDARY })
+        );
+        this.closeSpellsButton.setOrigin(0.5);
+        this.closeSpellsButton.setDepth(depths.MODAL_ELEMENTS + 1);
+        this.closeSpellsButton.setInteractive();
+        this.closeSpellsButton.on('pointerdown', () => this.hideSpellsModal());
+        this.closeSpellsButton.on('pointerover', () => {
+            this.closeSpellsButton.setColor(colors.TEXT_PRIMARY);
+        });
+        this.closeSpellsButton.on('pointerout', () => {
+            this.closeSpellsButton.setColor(colors.TEXT_SECONDARY);
+        });
+
+        // Guardar referencias
+        this.spellsModalElements = [
+            this.spellsModalBg,
+            this.spellsModalPanel,
+            this.spellsModalTitle,
+            this.spellsModalContent,
+            this.closeSpellsButton
+        ];
+
+        // Atajo ESC para cerrar
+        this.scene.input.keyboard.once('keydown-ESC', () => this.hideSpellsModal());
+    }
+
+    hideSpellsModal() {
+        if (this.spellsModalElements) {
+            this.spellsModalElements.forEach(element => {
+                if (element && element.destroy) {
+                    element.destroy();
+                }
+            });
+            this.spellsModalElements = null;
+        }
     }
 
     showConfigMenu() {
@@ -349,93 +552,7 @@ export class RightSidePanel {
         }
     }
 
-    getMainMenuContent() {
-        let content = 'OPCIONES DISPONIBLES:\n\n';
-        content += '• Inventario (I)\n';
-        content += '• Características (C)\n';
-        content += '• Hechizos (H)\n';
-        content += '• Estadísticas (E)\n\n';
-        content += '• Configuración\n';
-        content += '• Cerrar Sesión\n\n';
-        content += 'Haz clic en cualquier\nopción para acceder';
-
-        return content;
-    }
-
-    updateContent(title, content) {
-        console.log('🔄 Actualizando contenido del panel:', title);
-        console.log('🔄 Contenido elemento:', !!this.contentText);
-
-        // Solo actualizar el contenido, el título siempre es "MENÚ"
-        if (this.contentText) {
-            this.contentText.setText(content);
-        }
-    }
-
-    getInventoryContent() {
-        // Por ahora contenido básico, se expandirá cuando implementes el sistema de inventario
-        const items = this.player.inventory || [];
-        
-        if (items.length === 0) {
-            return 'Inventario vacío\n\nAquí aparecerán\ntus objetos y\nequipamiento';
-        }
-        
-        let content = `Objetos: ${items.length}\n\n`;
-        items.slice(0, 8).forEach((item, index) => {
-            content += `${index + 1}. ${item.name}\n`;
-        });
-        
-        if (items.length > 8) {
-            content += `\n... y ${items.length - 8} más`;
-        }
-        
-        return content;
-    }
-
-    getSpellsContent() {
-        const spells = this.player.getSpellsInfo ? this.player.getSpellsInfo() : [];
-        
-        if (spells.length === 0) {
-            return 'Sin hechizos\ndisponibles';
-        }
-        
-        let content = `Hechizos: ${spells.length}\n\n`;
-        spells.forEach((spell, index) => {
-            content += `${index + 1}. ${spell.name}\n`;
-            content += `   PA: ${spell.actionPointCost}\n`;
-            content += `   Rango: ${spell.range}\n\n`;
-        });
-        
-        return content;
-    }
-
-    getStatsContent() {
-        const stats = this.player.characteristics || {};
-        
-        let content = `Nivel: ${this.player.level}\n`;
-        content += `XP: ${this.player.experience}\n`;
-        content += `HP: ${this.player.currentHP}/${this.player.maxHP}\n\n`;
-        
-        content += 'Características:\n';
-        Object.entries(stats).forEach(([key, value]) => {
-            const displayName = this.getCharacteristicDisplayName(key);
-            content += `${displayName}: ${value}\n`;
-        });
-        
-        return content;
-    }
-
-    getCharacteristicDisplayName(key) {
-        const names = {
-            tierra: 'Tierra',
-            fuego: 'Fuego',
-            agua: 'Agua',
-            aire: 'Aire',
-            vida: 'Vida',
-            sabiduria: 'Sabiduría'
-        };
-        return names[key] || key;
-    }
+    // Ya no necesitamos estos métodos porque usamos modales
 
     toggle() {
         this.isVisible = !this.isVisible;
@@ -445,8 +562,10 @@ export class RightSidePanel {
     }
 
     destroy() {
-        // Limpiar modal de configuración si existe
+        // Limpiar todos los modales si existen
         this.hideConfigModal();
+        this.hideInventoryModal();
+        this.hideSpellsModal();
 
         // Limpiar elementos del panel
         this.elements.forEach(element => {
