@@ -239,7 +239,9 @@ export class CombatSummary {
 
         // Después de 1 segundo, cambiar a la escena de exploración
         this.scene.time.delayedCall(1000, () => {
-            this.scene.scene.start('ExplorationMap');
+            // Pasar datos del usuario para mantener la sesión
+            const userData = this.scene.registry.get('userData');
+            this.scene.scene.start('ExplorationMap', { user: userData });
         });
     }
 

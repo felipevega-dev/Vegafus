@@ -7,12 +7,39 @@ export class ExplorationMap extends Phaser.Scene {
     }
 
     preload() {
-        // Cargar assets básicos (reutilizar los del combate)
+        // Crear sprites simples si no existen las imágenes
+        this.load.on('filecomplete', (key) => {
+            console.log('Archivo cargado:', key);
+        });
+
+        this.load.on('loaderror', (file) => {
+            console.log('Error cargando:', file.key);
+            // Crear sprite placeholder
+            this.createPlaceholderSprite(file.key);
+        });
+
+        // Intentar cargar assets básicos
         this.load.image('character', 'assets/images/character.png');
         this.load.image('enemy', 'assets/images/enemy.png');
     }
 
-    create(data) {
+    createPlaceholderSprite(key) {
+        // Crear un sprite simple usando gráficos de Phaser
+        const graphics = this.add.graphics();
+
+        if (key === 'character') {
+            graphics.fillStyle(0x00ff00); // Verde para el jugador
+            graphics.fillCircle(16, 16, 12);
+        } else if (key === 'enemy') {
+            graphics.fillStyle(0xff0000); // Rojo para enemigos
+            graphics.fillCircle(16, 16, 12);
+        }
+
+        graphics.generateTexture(key, 32, 32);
+        graphics.destroy();
+    }
+
+    async create(data) {
         console.log('Iniciando mapa de exploración');
 
         // Guardar datos del usuario autenticado
@@ -21,31 +48,44 @@ export class ExplorationMap extends Phaser.Scene {
             console.log('Usuario autenticado:', this.userData.username);
         }
 
+        // Recuperar ID del personaje si viene del combate
+        this.currentCharacterId = this.registry.get('currentCharacterId') || null;
+
         // Crear grid más grande para exploración
         this.grid = new Grid(this, 30, 20); // 30x20 para exploración
-        
+
         // Variables del sistema
         this.selectedCell = null;
         this.movementIndicators = [];
         this.monsters = [];
         this.interactionMode = false; // Para mostrar opciones de interacción
         this.isMoving = false; // Para controlar animaciones de movimiento
-        
+
         // Crear el mapa de exploración
         this.createExplorationMap();
-        
-        // Crear jugador
-        this.createPlayer();
 
-        // Limpiar monstruos existentes y generar nuevos
-        this.clearExistingMonsters();
-        this.spawnRandomMonsters();
+        // Crear jugador (ahora async) - ESPERAR a que termine
+        await this.createPlayer();
 
-        // Configurar controles
-        this.setupControls();
+        // Solo continuar después de que el jugador esté creado
+        if (this.player) {
+            // Limpiar monstruos existentes y generar nuevos
+            this.clearExistingMonsters();
+            this.spawnRandomMonsters();
 
-        // Crear UI
-        this.createUI();
+            // Configurar controles
+            this.setupControls();
+
+            // Crear UI
+            this.createUI();
+
+            // Iniciar auto-guardado si hay usuario autenticado
+            if (this.userData) {
+                this.startAutoSave();
+            }
+        } else {
+            console.error('Error: No se pudo crear el jugador');
+        }
     }
 
     createExplorationMap() {
@@ -120,28 +160,122 @@ export class ExplorationMap extends Phaser.Scene {
         }
     }
 
-    createPlayer() {
-        // Verificar si hay datos guardados del jugador
-        const savedPlayerData = this.registry.get('playerData');
-
-        if (savedPlayerData) {
-            // Restaurar jugador con datos guardados
-            this.player = new Player(this, savedPlayerData.gridX || 5, savedPlayerData.gridY || 10, savedPlayerData.playerClass || 'mage');
-            this.player.currentHP = savedPlayerData.currentHP || this.player.maxHP;
-            this.player.level = savedPlayerData.level || 1;
-            this.player.experience = savedPlayerData.experience || 0;
-
-            console.log(`Jugador restaurado: Nivel ${this.player.level}, XP: ${this.player.experience}`);
+    async createPlayer() {
+        // Si hay usuario autenticado, intentar cargar su personaje del backend
+        if (this.userData) {
+            try {
+                await this.loadPlayerFromBackend();
+            } catch (error) {
+                console.error('Error cargando personaje del backend:', error);
+                // Si falla, crear personaje por defecto
+                this.createDefaultPlayer();
+            }
         } else {
-            // Crear jugador nuevo
-            this.player = new Player(this, 5, 10, 'mage');
+            // Sin usuario autenticado, usar datos locales
+            this.createDefaultPlayer();
         }
 
         // En exploración no hay límite de movimiento
         this.player.maxMovementPoints = 999;
         this.player.currentMovementPoints = 999;
 
-        // No actualizar UI aquí, se hará en create()
+        // Actualizar UI después de crear el jugador
+        this.updatePlayerUI();
+
+        // Si viene del combate (hay datos guardados), guardar progreso actualizado
+        const savedPlayerData = this.registry.get('playerData');
+        if (savedPlayerData && this.currentCharacterId) {
+            // Esperar un poco para que se complete la carga, luego guardar
+            this.time.delayedCall(1000, () => {
+                this.saveProgressToBackend();
+            });
+        }
+    }
+
+    async loadPlayerFromBackend() {
+        const { apiClient } = await import('../utils/ApiClient.js');
+
+        // Obtener personajes del usuario
+        const response = await apiClient.getCharacters();
+        const characters = response.characters;
+
+        if (characters && characters.length > 0) {
+            // Por ahora, usar el primer personaje (más tarde podemos hacer selección)
+            const character = characters[0];
+
+            console.log('Personaje cargado del backend:', character);
+
+            // Crear jugador con datos del backend
+            this.player = new Player(
+                this,
+                character.position?.x || 5,
+                character.position?.y || 10,
+                character.class || 'mage'
+            );
+
+            // Aplicar estadísticas del personaje
+            this.player.level = character.level || 1;
+            this.player.experience = character.experience || 0;
+            this.player.currentHP = character.stats?.hp?.current || 100;
+            this.player.maxHP = character.stats?.hp?.max || 100;
+            this.player.attack = character.stats?.attack || 20;
+            this.player.defense = character.stats?.defense || 10;
+
+            // Guardar ID del personaje para futuras actualizaciones
+            this.currentCharacterId = character.id;
+
+            console.log(`Personaje cargado: ${character.name} - Nivel ${this.player.level}, XP: ${this.player.experience}`);
+        } else {
+            // No tiene personajes, crear uno nuevo
+            await this.createNewCharacterInBackend();
+        }
+    }
+
+    async createNewCharacterInBackend() {
+        const { apiClient } = await import('../utils/ApiClient.js');
+
+        try {
+            // Crear personaje por defecto
+            const response = await apiClient.createCharacter('Aventurero', 'mage');
+            const character = response.character;
+
+            console.log('Nuevo personaje creado:', character);
+
+            // Crear jugador con datos del nuevo personaje
+            this.player = new Player(this, 5, 10, character.class);
+            this.player.level = character.level;
+            this.player.experience = character.experience;
+            this.player.currentHP = character.stats.hp.current;
+            this.player.maxHP = character.stats.hp.max;
+            this.player.attack = character.stats.attack;
+            this.player.defense = character.stats.defense;
+
+            this.currentCharacterId = character.id;
+
+            console.log(`Nuevo personaje creado: Nivel ${this.player.level}, XP: ${this.player.experience}`);
+        } catch (error) {
+            console.error('Error creando personaje:', error);
+            this.createDefaultPlayer();
+        }
+    }
+
+    createDefaultPlayer() {
+        // Verificar si hay datos guardados localmente
+        const savedPlayerData = this.registry.get('playerData');
+
+        if (savedPlayerData) {
+            // Restaurar jugador con datos guardados localmente
+            this.player = new Player(this, savedPlayerData.gridX || 5, savedPlayerData.gridY || 10, savedPlayerData.playerClass || 'mage');
+            this.player.currentHP = savedPlayerData.currentHP || this.player.maxHP;
+            this.player.level = savedPlayerData.level || 1;
+            this.player.experience = savedPlayerData.experience || 0;
+
+            console.log(`Jugador restaurado localmente: Nivel ${this.player.level}, XP: ${this.player.experience}`);
+        } else {
+            // Crear jugador completamente nuevo
+            this.player = new Player(this, 5, 10, 'mage');
+            console.log('Jugador nuevo creado');
+        }
     }
 
     clearExistingMonsters() {
@@ -305,6 +439,10 @@ export class ExplorationMap extends Phaser.Scene {
             attack: this.player.attack,
             defense: this.player.defense
         });
+
+        // Guardar datos del usuario para mantener la sesión
+        this.registry.set('userData', this.userData);
+        this.registry.set('currentCharacterId', this.currentCharacterId);
 
         console.log(`Datos guardados: Nivel ${this.player.level}, XP: ${this.player.experience}`);
 
@@ -516,13 +654,66 @@ export class ExplorationMap extends Phaser.Scene {
         this.movementIndicators = [];
     }
 
+    async saveProgressToBackend() {
+        // Solo guardar si hay usuario autenticado y personaje cargado
+        if (!this.userData || !this.currentCharacterId || !this.player) {
+            return;
+        }
+
+        try {
+            const { apiClient } = await import('../utils/ApiClient.js');
+
+            const gameData = {
+                level: this.player.level,
+                experience: this.player.experience,
+                stats: {
+                    hp: {
+                        current: this.player.currentHP,
+                        max: this.player.maxHP
+                    },
+                    attack: this.player.attack,
+                    defense: this.player.defense
+                },
+                position: {
+                    x: this.player.gridX,
+                    y: this.player.gridY
+                }
+            };
+
+            await apiClient.saveProgress(this.currentCharacterId, gameData);
+            console.log('✅ Progreso guardado en el backend');
+        } catch (error) {
+            console.error('❌ Error guardando progreso:', error);
+        }
+    }
+
+    // Método para guardar automáticamente cada cierto tiempo
+    startAutoSave() {
+        // Guardar cada 30 segundos
+        this.autoSaveTimer = this.time.addEvent({
+            delay: 30000, // 30 segundos
+            callback: () => {
+                this.saveProgressToBackend();
+            },
+            loop: true
+        });
+    }
+
     async handleLogout() {
         try {
+            // Guardar progreso antes de hacer logout
+            await this.saveProgressToBackend();
+
             // Importar apiClient dinámicamente
             const { apiClient } = await import('../utils/ApiClient.js');
 
             await apiClient.logout();
             console.log('Logout exitoso');
+
+            // Limpiar timer de auto-guardado
+            if (this.autoSaveTimer) {
+                this.autoSaveTimer.destroy();
+            }
 
             // Volver a la escena de autenticación
             this.scene.start('AuthSceneHTML');
