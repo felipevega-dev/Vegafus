@@ -561,11 +561,7 @@ export class ExplorationMap extends Phaser.Scene {
             this.clearInteractionUI();
         });
 
-        // Tecla C para abrir características
-        this.cKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C);
-        this.cKey.on('down', () => {
-            this.openCharacteristics();
-        });
+        // Las características ahora se manejan desde el panel lateral con la tecla C
     }
 
     handleMouseClick(pointer) {
@@ -646,148 +642,21 @@ export class ExplorationMap extends Phaser.Scene {
             color: '#ffffff'
         }).setDepth(1001);
 
-        // Botón de características más elegante
-        const characteristicsBtn = this.add.text(120, 75, 'CARACTERÍSTICAS (C)', {
-            fontSize: '11px',
-            fontFamily: 'Arial',
-            color: '#ffdd00',
-            backgroundColor: '#2d2d2d',
-            padding: { x: 8, y: 4 }
-        });
-        characteristicsBtn.setOrigin(0.5);
-        characteristicsBtn.setDepth(1001);
-        characteristicsBtn.setInteractive();
-        characteristicsBtn.on('pointerdown', () => this.openCharacteristics());
-        characteristicsBtn.on('pointerover', () => {
-            characteristicsBtn.setStyle({ backgroundColor: '#404040' });
-        });
-        characteristicsBtn.on('pointerout', () => {
-            characteristicsBtn.setStyle({ backgroundColor: '#2d2d2d' });
-        });
+        // Ya no necesitamos este botón, las características se manejan desde el panel lateral
 
-        // Mostrar información del usuario con botón de configuración si está autenticado
+        // Mostrar información del usuario si está autenticado
         if (this.userData) {
             // Nombre de usuario
-            this.userText = this.add.text(1100, 20, `${this.userData.username}`, {
+            this.userText = this.add.text(1100, 20, `Usuario: ${this.userData.username}`, {
                 fontSize: '12px',
                 fontFamily: 'Arial',
                 color: '#ffffff'
             }).setDepth(1001);
-
-            // Botón de configuración (⚙️)
-            this.configButton = this.add.text(1200, 20, '⚙️', {
-                fontSize: '16px',
-                fontFamily: 'Arial',
-                color: '#cccccc',
-                backgroundColor: '#333333',
-                padding: { x: 6, y: 2 }
-            });
-            this.configButton.setOrigin(0.5);
-            this.configButton.setDepth(1001);
-            this.configButton.setInteractive();
-            this.configButton.on('pointerdown', () => this.toggleConfigMenu());
-            this.configButton.on('pointerover', () => {
-                this.configButton.setColor('#ffffff');
-                this.configButton.setStyle({ backgroundColor: '#555555' });
-            });
-            this.configButton.on('pointerout', () => {
-                this.configButton.setColor('#cccccc');
-                this.configButton.setStyle({ backgroundColor: '#333333' });
-            });
-
-            // Menú de configuración (inicialmente oculto)
-            this.createConfigMenu();
         }
 
         // Panel lateral derecho
         console.log('🎮 Creando panel lateral derecho en ExplorationMap...');
         this.rightSidePanel = new RightSidePanel(this, this.player);
-    }
-
-    createConfigMenu() {
-        // Panel del menú de configuración
-        this.configMenuPanel = this.add.rectangle(1150, 80, 120, 80, 0x1a1a1a, 0.95);
-        this.configMenuPanel.setDepth(2000);
-        this.configMenuPanel.setStrokeStyle(2, 0x666666);
-        this.configMenuPanel.setVisible(false);
-
-        // Botón de logout
-        this.logoutButton = this.add.text(1150, 70, 'Cerrar Sesión', {
-            fontSize: '11px',
-            fontFamily: 'Arial',
-            color: '#ff4444',
-            backgroundColor: '#2a2a2a',
-            padding: { x: 8, y: 4 }
-        });
-        this.logoutButton.setOrigin(0.5);
-        this.logoutButton.setDepth(2001);
-        this.logoutButton.setInteractive();
-        this.logoutButton.setVisible(false);
-        this.logoutButton.on('pointerdown', () => {
-            this.hideConfigMenu();
-            this.handleLogout();
-        });
-        this.logoutButton.on('pointerover', () => {
-            this.logoutButton.setStyle({ backgroundColor: '#444444' });
-        });
-        this.logoutButton.on('pointerout', () => {
-            this.logoutButton.setStyle({ backgroundColor: '#2a2a2a' });
-        });
-
-        // Botón de configuración (placeholder para futuras opciones)
-        this.settingsButton = this.add.text(1150, 95, 'Configuración', {
-            fontSize: '11px',
-            fontFamily: 'Arial',
-            color: '#cccccc',
-            backgroundColor: '#2a2a2a',
-            padding: { x: 8, y: 4 }
-        });
-        this.settingsButton.setOrigin(0.5);
-        this.settingsButton.setDepth(2001);
-        this.settingsButton.setInteractive();
-        this.settingsButton.setVisible(false);
-        this.settingsButton.on('pointerdown', () => {
-            console.log('⚙️ Configuración clickeada (próximamente)');
-            this.hideConfigMenu();
-        });
-        this.settingsButton.on('pointerover', () => {
-            this.settingsButton.setStyle({ backgroundColor: '#444444' });
-        });
-        this.settingsButton.on('pointerout', () => {
-            this.settingsButton.setStyle({ backgroundColor: '#2a2a2a' });
-        });
-
-        this.configMenuVisible = false;
-    }
-
-    toggleConfigMenu() {
-        if (this.configMenuVisible) {
-            this.hideConfigMenu();
-        } else {
-            this.showConfigMenu();
-        }
-    }
-
-    showConfigMenu() {
-        this.configMenuPanel.setVisible(true);
-        this.logoutButton.setVisible(true);
-        this.settingsButton.setVisible(true);
-        this.configMenuVisible = true;
-
-        // Cerrar el menú si se hace clic fuera de él
-        this.input.once('pointerdown', (pointer) => {
-            const bounds = this.configMenuPanel.getBounds();
-            if (!Phaser.Geom.Rectangle.Contains(bounds, pointer.x, pointer.y)) {
-                this.hideConfigMenu();
-            }
-        });
-    }
-
-    hideConfigMenu() {
-        this.configMenuPanel.setVisible(false);
-        this.logoutButton.setVisible(false);
-        this.settingsButton.setVisible(false);
-        this.configMenuVisible = false;
     }
 
     createExperienceBar() {

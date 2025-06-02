@@ -36,7 +36,7 @@ export class RightSidePanel {
 
         // Título del panel
         this.titleText = this.scene.add.text(
-            rightPanel.x + rightPanel.width / 2,
+            rightPanel.x + rightPanel.width / 2 - 20,
             50,
             'MENÚ',
             LayoutUtils.createTextStyle('TITLE', { color: colors.TEXT_ACCENT })
@@ -45,12 +45,31 @@ export class RightSidePanel {
         this.titleText.setDepth(depths.UI_TEXT);
         this.elements.push(this.titleText);
 
+        // Botón de configuración separado
+        this.configButton = this.scene.add.text(
+            rightPanel.x + rightPanel.width / 2 + 30,
+            50,
+            '⚙️',
+            LayoutUtils.createTextStyle('TITLE', { color: colors.TEXT_SECONDARY })
+        );
+        this.configButton.setOrigin(0.5);
+        this.configButton.setDepth(depths.UI_TEXT);
+        this.configButton.setInteractive();
+        this.configButton.on('pointerdown', () => this.showConfigMenu());
+        this.configButton.on('pointerover', () => {
+            this.configButton.setColor('#ffffff');
+        });
+        this.configButton.on('pointerout', () => {
+            this.configButton.setColor(colors.TEXT_SECONDARY);
+        });
+        this.elements.push(this.configButton);
+
         console.log('🎮 Panel creado en posición:', rightPanel.x, rightPanel.y);
 
         // Crear área de contenido
         this.createContentArea();
 
-        // Crear botones del menú
+        // Crear botones del menú (siempre visibles)
         this.createMenuButtons();
     }
 
@@ -198,17 +217,156 @@ export class RightSidePanel {
         this.updateContent('ESTADÍSTICAS', this.getStatsContent());
     }
 
+    showConfigMenu() {
+        console.log('⚙️ Abriendo menú de configuración...');
+        this.createConfigModal();
+    }
+
+    createConfigModal() {
+        const colors = LayoutConfig.COLORS;
+        const depths = LayoutConfig.DEPTHS;
+
+        // Fondo semi-transparente que cubre toda la pantalla
+        this.configModalBg = this.scene.add.rectangle(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2,
+            LayoutConfig.GAME_WIDTH,
+            LayoutConfig.GAME_HEIGHT,
+            0x000000,
+            0.7
+        );
+        this.configModalBg.setDepth(depths.MODAL_BACKGROUND);
+        this.configModalBg.setInteractive();
+        this.configModalBg.on('pointerdown', () => this.hideConfigModal());
+
+        // Panel del menú de configuración en el centro
+        this.configModalPanel = this.scene.add.rectangle(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2,
+            300,
+            200,
+            colors.PANEL_BG,
+            0.95
+        );
+        this.configModalPanel.setDepth(depths.MODAL_ELEMENTS);
+        this.configModalPanel.setStrokeStyle(3, colors.PANEL_BORDER);
+
+        // Título del modal
+        this.configModalTitle = this.scene.add.text(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2 - 70,
+            'CONFIGURACIÓN',
+            LayoutUtils.createTextStyle('TITLE', { color: colors.TEXT_ACCENT })
+        );
+        this.configModalTitle.setOrigin(0.5);
+        this.configModalTitle.setDepth(depths.MODAL_ELEMENTS + 1);
+
+        // Botón de logout
+        this.logoutModalButton = this.scene.add.rectangle(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2 - 20,
+            200,
+            40,
+            colors.BUTTON_BG,
+            0.9
+        );
+        this.logoutModalButton.setDepth(depths.MODAL_ELEMENTS + 1);
+        this.logoutModalButton.setStrokeStyle(2, colors.PANEL_BORDER);
+        this.logoutModalButton.setInteractive();
+
+        this.logoutModalText = this.scene.add.text(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2 - 20,
+            'Cerrar Sesión',
+            LayoutUtils.createTextStyle('BUTTON', { color: colors.TEXT_ERROR })
+        );
+        this.logoutModalText.setOrigin(0.5);
+        this.logoutModalText.setDepth(depths.MODAL_ELEMENTS + 2);
+
+        // Eventos del botón logout
+        this.logoutModalButton.on('pointerdown', () => {
+            this.hideConfigModal();
+            this.handleLogout();
+        });
+        this.logoutModalButton.on('pointerover', () => {
+            this.logoutModalButton.setFillStyle(colors.BUTTON_HOVER);
+        });
+        this.logoutModalButton.on('pointerout', () => {
+            this.logoutModalButton.setFillStyle(colors.BUTTON_BG);
+        });
+
+        // Botón de cerrar
+        this.closeModalButton = this.scene.add.text(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2 + 40,
+            'Cerrar',
+            LayoutUtils.createTextStyle('BUTTON', { color: colors.TEXT_SECONDARY })
+        );
+        this.closeModalButton.setOrigin(0.5);
+        this.closeModalButton.setDepth(depths.MODAL_ELEMENTS + 1);
+        this.closeModalButton.setInteractive();
+        this.closeModalButton.on('pointerdown', () => this.hideConfigModal());
+        this.closeModalButton.on('pointerover', () => {
+            this.closeModalButton.setColor(colors.TEXT_PRIMARY);
+        });
+        this.closeModalButton.on('pointerout', () => {
+            this.closeModalButton.setColor(colors.TEXT_SECONDARY);
+        });
+
+        // Guardar referencias para poder limpiar
+        this.configModalElements = [
+            this.configModalBg,
+            this.configModalPanel,
+            this.configModalTitle,
+            this.logoutModalButton,
+            this.logoutModalText,
+            this.closeModalButton
+        ];
+    }
+
+    hideConfigModal() {
+        if (this.configModalElements) {
+            this.configModalElements.forEach(element => {
+                if (element && element.destroy) {
+                    element.destroy();
+                }
+            });
+            this.configModalElements = null;
+        }
+    }
+
+    clearContentArea() {
+        // Limpiar solo los elementos del área de contenido, no todo el panel
+        if (this.contentText) {
+            this.contentText.setText('');
+        }
+    }
+
+    handleLogout() {
+        console.log('🚪 Cerrando sesión...');
+        if (this.scene.handleLogout) {
+            this.scene.handleLogout();
+        }
+    }
+
+    getMainMenuContent() {
+        let content = 'OPCIONES DISPONIBLES:\n\n';
+        content += '• Inventario (I)\n';
+        content += '• Características (C)\n';
+        content += '• Hechizos (H)\n';
+        content += '• Estadísticas (E)\n\n';
+        content += '• Configuración\n';
+        content += '• Cerrar Sesión\n\n';
+        content += 'Haz clic en cualquier\nopción para acceder';
+
+        return content;
+    }
+
     updateContent(title, content) {
         console.log('🔄 Actualizando contenido del panel:', title);
-        console.log('🔄 Título elemento:', !!this.titleText);
         console.log('🔄 Contenido elemento:', !!this.contentText);
 
-        // Actualizar título
-        if (this.titleText) {
-            this.titleText.setText(title);
-        }
-
-        // Actualizar contenido
+        // Solo actualizar el contenido, el título siempre es "MENÚ"
         if (this.contentText) {
             this.contentText.setText(content);
         }
@@ -287,6 +445,10 @@ export class RightSidePanel {
     }
 
     destroy() {
+        // Limpiar modal de configuración si existe
+        this.hideConfigModal();
+
+        // Limpiar elementos del panel
         this.elements.forEach(element => {
             if (element && element.destroy) {
                 element.destroy();
