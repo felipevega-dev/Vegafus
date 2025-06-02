@@ -234,6 +234,23 @@ export class ExplorationMap extends Phaser.Scene {
             this.player.attack = character.stats?.attack || 20;
             this.player.defense = character.stats?.defense || 10;
 
+            // Aplicar características
+            this.player.characteristics = character.characteristics || {
+                tierra: 0, fuego: 0, agua: 0, aire: 0, vida: 0, sabiduria: 0
+            };
+            this.player.capitalPoints = character.capitalPoints || 0;
+
+            // Aplicar resistencias
+            this.player.resistances = character.resistances || {
+                tierra: 0, fuego: 0, agua: 0, aire: 0
+            };
+
+            // Aplicar bonos de daño
+            this.player.damageBonus = character.damageBonus || {
+                flat: 0, spellPercent: 0, meleePercent: 0,
+                tierraPercent: 0, fuegoPercent: 0, aguaPercent: 0, airePercent: 0
+            };
+
             // Guardar ID del personaje para futuras actualizaciones
             this.currentCharacterId = character.id;
 
@@ -498,6 +515,12 @@ export class ExplorationMap extends Phaser.Scene {
         this.escapeKey.on('down', () => {
             this.clearInteractionUI();
         });
+
+        // Tecla C para abrir características
+        this.cKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C);
+        this.cKey.on('down', () => {
+            this.openCharacteristics();
+        });
     }
 
     handleMouseClick(pointer) {
@@ -572,11 +595,24 @@ export class ExplorationMap extends Phaser.Scene {
         this.createExperienceBar();
 
         // Instrucciones
-        this.add.text(400, 30, 'Click en monstruos para interactuar | ESC para cancelar', {
+        this.add.text(400, 30, 'Click en monstruos para interactuar | C = Características | ESC para cancelar', {
             fontSize: '12px',
             fontFamily: 'Arial',
             color: '#ffffff'
         }).setDepth(1001);
+
+        // Botón de características
+        const characteristicsBtn = this.add.text(120, 80, 'CARACTERÍSTICAS (C)', {
+            fontSize: '12px',
+            fontFamily: 'Arial',
+            color: '#ffff00',
+            backgroundColor: '#333333',
+            padding: { x: 8, y: 4 }
+        });
+        characteristicsBtn.setOrigin(0.5);
+        characteristicsBtn.setDepth(1001);
+        characteristicsBtn.setInteractive();
+        characteristicsBtn.on('pointerdown', () => this.openCharacteristics());
 
         // Mostrar información del usuario y botón de logout si está autenticado
         if (this.userData) {
@@ -753,6 +789,24 @@ export class ExplorationMap extends Phaser.Scene {
         // Hacer que desaparezca después de 3 segundos
         this.time.delayedCall(3000, () => {
             syncMessage.destroy();
+        });
+    }
+
+    openCharacteristics() {
+        if (!this.player) {
+            console.log('No hay jugador para mostrar características');
+            return;
+        }
+
+        console.log('🎯 Abriendo interfaz de características');
+
+        // Pausar esta escena y abrir la interfaz de características
+        this.scene.pause();
+        this.scene.launch('CharacteristicsScene', {
+            player: this.player,
+            userData: this.userData,
+            characterId: this.currentCharacterId,
+            parentScene: 'ExplorationMap'
         });
     }
 

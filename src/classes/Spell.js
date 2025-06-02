@@ -1,5 +1,5 @@
 export class Spell {
-    constructor(name, actionPointCost, range, description, effect, cooldown = 0) {
+    constructor(name, actionPointCost, range, description, effect, cooldown = 0, element = null) {
         this.name = name;
         this.actionPointCost = actionPointCost;
         this.range = range;
@@ -7,6 +7,7 @@ export class Spell {
         this.effect = effect; // Función que define el efecto del hechizo
         this.cooldown = cooldown; // Turnos de enfriamiento
         this.currentCooldown = 0;
+        this.element = element; // Elemento del hechizo: 'tierra', 'fuego', 'agua', 'aire'
     }
 
     // Verificar si el hechizo puede ser usado
@@ -28,6 +29,50 @@ export class Spell {
         }
 
         return { canCast: true };
+    }
+
+    // Calcular daño con el sistema completo de Dofus
+    calculateDamage(baseDamage, caster, target = null) {
+        if (!this.element || !caster.characteristics) {
+            return baseDamage;
+        }
+
+        let finalDamage = baseDamage;
+
+        // 1. Aplicar característica elemental (1 punto = 1% más daño)
+        const elementBonus = caster.characteristics[this.element] || 0;
+        if (elementBonus > 0) {
+            finalDamage = Math.floor(finalDamage * (1 + elementBonus / 100));
+            console.log(`🔥 Característica ${this.element}: +${elementBonus}% (${baseDamage} → ${finalDamage})`);
+        }
+
+        // 2. Aplicar daños planos (para futuro)
+        if (caster.damageBonus?.flat > 0) {
+            finalDamage += caster.damageBonus.flat;
+            console.log(`⚔️ Daño plano: +${caster.damageBonus.flat}`);
+        }
+
+        // 3. Aplicar bonos porcentuales de hechizo (para futuro)
+        if (caster.damageBonus?.spellPercent > 0) {
+            finalDamage = Math.floor(finalDamage * (1 + caster.damageBonus.spellPercent / 100));
+            console.log(`✨ Bono hechizo: +${caster.damageBonus.spellPercent}%`);
+        }
+
+        // 4. Aplicar bonos por elemento específico (para futuro)
+        const elementPercentKey = `${this.element}Percent`;
+        if (caster.damageBonus?.[elementPercentKey] > 0) {
+            finalDamage = Math.floor(finalDamage * (1 + caster.damageBonus[elementPercentKey] / 100));
+            console.log(`🌟 Bono ${this.element}: +${caster.damageBonus[elementPercentKey]}%`);
+        }
+
+        // 5. Aplicar resistencias del objetivo (si existe)
+        if (target && target.resistances && target.resistances[this.element] > 0) {
+            const resistance = target.resistances[this.element];
+            finalDamage = Math.floor(finalDamage * (1 - resistance / 100));
+            console.log(`🛡️ Resistencia ${this.element}: -${resistance}% (${finalDamage})`);
+        }
+
+        return Math.max(1, finalDamage); // Mínimo 1 de daño
     }
 
     // Lanzar el hechizo
@@ -59,24 +104,26 @@ export class Spell {
     }
 }
 
-// Hechizos específicos por raza
+// Hechizos específicos por raza con elementos
 export class SpellLibrary {
     static getWarriorSpells() {
         return [
             new Spell(
-                'Golpe Poderoso',
+                'Golpe Telúrico',
                 4,
                 1,
-                'Un ataque devastador que causa daño extra',
+                'Ataque de tierra que causa daño devastador',
                 (caster, targetX, targetY) => {
                     const target = caster.scene.grid.cells[targetY][targetX].object;
                     if (target && target.constructor.name === 'Enemy') {
-                        const damage = Math.floor(caster.attack * 1.5) + Phaser.Math.Between(-3, 3);
-                        target.takeDamage(damage);
+                        const baseDamage = Math.floor(caster.attack * 1.5) + Phaser.Math.Between(-3, 3);
+                        const spell = caster.spells.find(s => s.name === 'Golpe Telúrico');
+                        const finalDamage = spell.calculateDamage(baseDamage, caster);
+                        target.takeDamage(finalDamage);
 
-                        // Efecto visual especial
+                        // Efecto visual de tierra
                         const effect = caster.scene.add.circle(
-                            target.sprite.x, target.sprite.y, 30, 0xff0000, 0.5
+                            target.sprite.x, target.sprite.y, 30, 0x8B4513, 0.7
                         );
                         effect.setDepth(1000);
 
@@ -85,50 +132,89 @@ export class SpellLibrary {
                         });
                     }
                 },
-                1 // 1 turno de cooldown
+                1, // 1 turno de cooldown
+                'tierra' // Elemento tierra
             ),
             new Spell(
-                'Carga',
-                3,
-                2,
-                'Se mueve hacia el enemigo y lo ataca',
+                'Llama Ardiente',
+                4,
+                1,
+                'Espada envuelta en fuego que quema al enemigo',
                 (caster, targetX, targetY) => {
                     const target = caster.scene.grid.cells[targetY][targetX].object;
                     if (target && target.constructor.name === 'Enemy') {
-                        const damage = caster.attack + 5 + Phaser.Math.Between(-2, 2);
-                        target.takeDamage(damage);
+                        const baseDamage = caster.attack + 10 + Phaser.Math.Between(-2, 2);
+                        const spell = caster.spells.find(s => s.name === 'Llama Ardiente');
+                        const finalDamage = spell.calculateDamage(baseDamage, caster);
+                        target.takeDamage(finalDamage);
 
-                        // Efecto visual de carga
-                        const worldPos = caster.scene.grid.gridToWorld(targetX, targetY);
+                        // Efecto visual de fuego
                         const effect = caster.scene.add.circle(
-                            worldPos.x, worldPos.y, 25, 0xffa500, 0.7
+                            target.sprite.x, target.sprite.y, 25, 0xff4400, 0.8
                         );
                         effect.setDepth(1000);
 
                         caster.scene.time.delayedCall(400, () => {
                             effect.destroy();
                         });
-
-                        console.log(`Carga ejecutada: ${damage} de daño`);
                     }
                 },
-                0 // Sin cooldown
+                0, // Sin cooldown
+                'fuego' // Elemento fuego
             ),
             new Spell(
-                'Grito de Guerra',
-                2,
-                0,
-                'Aumenta el ataque temporalmente',
-                (caster) => {
-                    caster.attack += 10;
-                    caster.sprite.setTint(0xff8800); // Efecto visual
+                'Tormenta Helada',
+                3,
+                1,
+                'Ataque de hielo que congela al enemigo',
+                (caster, targetX, targetY) => {
+                    const target = caster.scene.grid.cells[targetY][targetX].object;
+                    if (target && target.constructor.name === 'Enemy') {
+                        const baseDamage = caster.attack + 8 + Phaser.Math.Between(-2, 2);
+                        const spell = caster.spells.find(s => s.name === 'Tormenta Helada');
+                        const finalDamage = spell.calculateDamage(baseDamage, caster);
+                        target.takeDamage(finalDamage);
 
-                    // Efecto temporal (3 turnos)
-                    caster.warCryTurns = 3;
+                        // Efecto visual de hielo
+                        const effect = caster.scene.add.circle(
+                            target.sprite.x, target.sprite.y, 25, 0x00ffff, 0.8
+                        );
+                        effect.setDepth(1000);
 
-                    console.log('¡Ataque aumentado por 3 turnos!');
+                        caster.scene.time.delayedCall(400, () => {
+                            effect.destroy();
+                        });
+                    }
                 },
-                2 // 2 turnos de cooldown
+                1, // 1 turno de cooldown
+                'agua' // Elemento agua
+            ),
+            new Spell(
+                'Viento Cortante',
+                3,
+                2,
+                'Ataque rápido de aire que atraviesa distancias',
+                (caster, targetX, targetY) => {
+                    const target = caster.scene.grid.cells[targetY][targetX].object;
+                    if (target && target.constructor.name === 'Enemy') {
+                        const baseDamage = caster.attack + 6 + Phaser.Math.Between(-2, 2);
+                        const spell = caster.spells.find(s => s.name === 'Viento Cortante');
+                        const finalDamage = spell.calculateDamage(baseDamage, caster);
+                        target.takeDamage(finalDamage);
+
+                        // Efecto visual de aire
+                        const effect = caster.scene.add.circle(
+                            target.sprite.x, target.sprite.y, 25, 0xcccccc, 0.6
+                        );
+                        effect.setDepth(1000);
+
+                        caster.scene.time.delayedCall(300, () => {
+                            effect.destroy();
+                        });
+                    }
+                },
+                0, // Sin cooldown
+                'aire' // Elemento aire
             )
         ];
     }
@@ -136,10 +222,10 @@ export class SpellLibrary {
     static getMageSpells() {
         return [
             new Spell(
-                'Bola de Fuego',
-                4,
-                4,
-                'Lanza una bola de fuego que causa daño en área',
+                'Terremoto',
+                5,
+                2,
+                'Invoca la fuerza de la tierra en área',
                 (caster, targetX, targetY) => {
                     // Daño en área 3x3
                     for (let x = targetX - 1; x <= targetX + 1; x++) {
@@ -148,126 +234,90 @@ export class SpellLibrary {
                                 const target = caster.scene.grid.cells[y][x].object;
                                 if (target && target.constructor.name === 'Enemy') {
                                     const distance = Math.abs(x - targetX) + Math.abs(y - targetY);
-                                    const damage = Math.floor((30 - distance * 5)) + Phaser.Math.Between(-3, 3);
-                                    if (damage > 0) {
-                                        target.takeDamage(damage);
-                                        console.log(`Bola de fuego: ${damage} de daño a enemigo en ${x},${y}`);
+                                    const baseDamage = Math.floor((35 - distance * 5)) + Phaser.Math.Between(-3, 3);
+                                    const spell = caster.spells.find(s => s.name === 'Terremoto');
+                                    const finalDamage = spell.calculateDamage(baseDamage, caster);
+                                    if (finalDamage > 0) {
+                                        target.takeDamage(finalDamage);
                                     }
                                 }
 
-                                // Efecto visual de fuego
+                                // Efecto visual de tierra
                                 const worldPos = caster.scene.grid.gridToWorld(x, y);
-                                const fireEffect = caster.scene.add.circle(
-                                    worldPos.x, worldPos.y, 20, 0xff4400, 0.7
+                                const earthEffect = caster.scene.add.circle(
+                                    worldPos.x, worldPos.y, 20, 0x8B4513, 0.8
                                 );
-                                fireEffect.setDepth(1000);
+                                earthEffect.setDepth(1000);
 
                                 caster.scene.time.delayedCall(1000, () => {
-                                    fireEffect.destroy();
+                                    earthEffect.destroy();
                                 });
                             }
                         }
                     }
                 },
-                1 // 1 turno de cooldown
+                2, // 2 turnos de cooldown
+                'tierra' // Elemento tierra
             ),
             new Spell(
-                'Rayo',
+                'Bola de Fuego',
+                4,
                 3,
-                3,
-                'Ataca en línea recta atravesando enemigos',
-                (caster, targetX, targetY) => {
-                    const path = SpellLibrary.getLinePath(caster.gridX, caster.gridY, targetX, targetY);
-
-                    for (let i = 1; i < path.length; i++) {
-                        const x = path[i].x;
-                        const y = path[i].y;
-
-                        if (x >= 0 && y >= 0 && x < caster.scene.grid.width && y < caster.scene.grid.height) {
-                            const target = caster.scene.grid.cells[y][x].object;
-                            if (target && target.constructor.name === 'Enemy') {
-                                const damage = 25 + Phaser.Math.Between(-5, 5);
-                                target.takeDamage(damage);
-                                console.log(`Rayo: ${damage} de daño a enemigo en ${x},${y}`);
-                            }
-
-                            // Efecto visual de rayo
-                            const worldPos = caster.scene.grid.gridToWorld(x, y);
-                            const lightningEffect = caster.scene.add.circle(
-                                worldPos.x, worldPos.y, 15, 0x00ffff, 0.8
-                            );
-                            lightningEffect.setDepth(1000);
-
-                            caster.scene.time.delayedCall(300, () => {
-                                lightningEffect.destroy();
-                            });
-                        }
-                    }
-                },
-                0 // Sin cooldown
-            ),
-            new Spell(
-                'Curación',
-                3,
-                0,
-                'Restaura puntos de vida',
-                (caster) => {
-                    const healAmount = 40 + Phaser.Math.Between(-5, 5);
-                    caster.currentHP = Math.min(caster.maxHP, caster.currentHP + healAmount);
-                    caster.updateHealthBar();
-
-                    // Efecto visual de curación
-                    const healEffect = caster.scene.add.circle(
-                        caster.sprite.x, caster.sprite.y, 40, 0x00ff00, 0.5
-                    );
-                    healEffect.setDepth(1000);
-
-                    caster.scene.time.delayedCall(800, () => {
-                        healEffect.destroy();
-                    });
-
-                    console.log(`¡Curado ${healAmount} puntos de vida!`);
-                },
-                2 // 2 turnos de cooldown
-            )
-        ];
-    }
-
-    static getArcherSpells() {
-        return [
-            new Spell(
-                'Disparo Certero',
-                15,
-                3,
-                6,
-                'Un disparo preciso de largo alcance',
+                'Proyectil mágico de fuego explosivo',
                 (caster, targetX, targetY) => {
                     const target = caster.scene.grid.cells[targetY][targetX].object;
                     if (target && target.constructor.name === 'Enemy') {
-                        const damage = caster.attack + 15 + Phaser.Math.Between(-2, 2);
-                        target.takeDamage(damage);
-                        
-                        // Efecto visual de flecha
-                        const line = caster.scene.add.line(
-                            0, 0,
-                            caster.sprite.x, caster.sprite.y,
-                            target.sprite.x, target.sprite.y,
-                            0x8B4513, 3
+                        const baseDamage = 30 + Phaser.Math.Between(-5, 5);
+                        const spell = caster.spells.find(s => s.name === 'Bola de Fuego');
+                        const finalDamage = spell.calculateDamage(baseDamage, caster);
+                        target.takeDamage(finalDamage);
+
+                        // Efecto visual de fuego
+                        const fireEffect = caster.scene.add.circle(
+                            target.sprite.x, target.sprite.y, 30, 0xff4400, 0.8
                         );
-                        line.setDepth(1000);
-                        
-                        caster.scene.time.delayedCall(400, () => {
-                            line.destroy();
+                        fireEffect.setDepth(1000);
+
+                        caster.scene.time.delayedCall(600, () => {
+                            fireEffect.destroy();
                         });
                     }
-                }
+                },
+                1, // 1 turno de cooldown
+                'fuego' // Elemento fuego
             ),
             new Spell(
-                'Lluvia de Flechas',
-                35,
-                5,
+                'Rayo de Hielo',
+                3,
+                2,
+                'Proyectil de hielo que congela al enemigo',
+                (caster, targetX, targetY) => {
+                    const target = caster.scene.grid.cells[targetY][targetX].object;
+                    if (target && target.constructor.name === 'Enemy') {
+                        const baseDamage = 25 + Phaser.Math.Between(-3, 3);
+                        const spell = caster.spells.find(s => s.name === 'Rayo de Hielo');
+                        const finalDamage = spell.calculateDamage(baseDamage, caster);
+                        target.takeDamage(finalDamage);
+
+                        // Efecto visual de hielo
+                        const iceEffect = caster.scene.add.circle(
+                            target.sprite.x, target.sprite.y, 25, 0x00ffff, 0.8
+                        );
+                        iceEffect.setDepth(1000);
+
+                        caster.scene.time.delayedCall(500, () => {
+                            iceEffect.destroy();
+                        });
+                    }
+                },
+                0, // Sin cooldown
+                'agua' // Elemento agua
+            ),
+            new Spell(
+                'Tormenta Eléctrica',
                 4,
-                'Múltiples flechas caen en un área',
+                3,
+                'Rayos del cielo que atacan en área',
                 (caster, targetX, targetY) => {
                     // Área de 2x2
                     for (let x = targetX; x <= targetX + 1; x++) {
@@ -275,58 +325,160 @@ export class SpellLibrary {
                             if (x >= 0 && y >= 0 && x < caster.scene.grid.width && y < caster.scene.grid.height) {
                                 const target = caster.scene.grid.cells[y][x].object;
                                 if (target && target.constructor.name === 'Enemy') {
-                                    const damage = 20 + Phaser.Math.Between(-3, 3);
-                                    target.takeDamage(damage);
+                                    const baseDamage = 20 + Phaser.Math.Between(-3, 3);
+                                    const spell = caster.spells.find(s => s.name === 'Tormenta Eléctrica');
+                                    const finalDamage = spell.calculateDamage(baseDamage, caster);
+                                    target.takeDamage(finalDamage);
                                 }
-                                
-                                // Efecto visual de flechas
-                                const isoPos = caster.scene.grid.gridToIso(x, y);
-                                const arrowEffect = caster.scene.add.rectangle(
-                                    640 + isoPos.x, 300 + isoPos.y, 10, 30, 0x8B4513
+
+                                // Efecto visual de aire/electricidad
+                                const worldPos = caster.scene.grid.gridToWorld(x, y);
+                                const lightningEffect = caster.scene.add.circle(
+                                    worldPos.x, worldPos.y, 15, 0xffff00, 0.9
                                 );
-                                arrowEffect.setDepth(1000);
-                                
-                                caster.scene.time.delayedCall(600, () => {
-                                    arrowEffect.destroy();
+                                lightningEffect.setDepth(1000);
+
+                                caster.scene.time.delayedCall(400, () => {
+                                    lightningEffect.destroy();
                                 });
                             }
                         }
                     }
-                }
-            ),
+                },
+                1, // 1 turno de cooldown
+                'aire' // Elemento aire
+            )
+        ];
+    }
+
+    static getArcherSpells() {
+        return [
             new Spell(
-                'Paso Sombra',
-                25,
-                4,
+                'Flecha Rocosa',
                 3,
-                'Teletransportarse a una posición vacía',
+                4,
+                'Flecha imbuida con el poder de la tierra',
                 (caster, targetX, targetY) => {
-                    if (caster.scene.grid.isWalkable(targetX, targetY)) {
-                        // Liberar posición actual
-                        caster.scene.grid.setFree(caster.gridX, caster.gridY);
-                        
-                        // Mover a nueva posición
-                        caster.gridX = targetX;
-                        caster.gridY = targetY;
-                        caster.scene.grid.setOccupied(caster.gridX, caster.gridY, caster);
-                        
-                        // Actualizar posición visual
-                        const isoPos = caster.scene.grid.gridToIso(caster.gridX, caster.gridY);
-                        caster.sprite.setPosition(640 + isoPos.x, 300 + isoPos.y);
-                        caster.healthBarBg.setPosition(caster.sprite.x, caster.sprite.y - 40);
-                        caster.healthBar.setPosition(caster.sprite.x, caster.sprite.y - 40);
-                        
-                        // Efecto visual de teletransporte
-                        const teleportEffect = caster.scene.add.circle(
-                            caster.sprite.x, caster.sprite.y, 50, 0x800080, 0.6
+                    const target = caster.scene.grid.cells[targetY][targetX].object;
+                    if (target && target.constructor.name === 'Enemy') {
+                        const baseDamage = caster.attack + 12 + Phaser.Math.Between(-2, 2);
+                        const spell = caster.spells.find(s => s.name === 'Flecha Rocosa');
+                        const finalDamage = spell.calculateDamage(baseDamage, caster);
+                        target.takeDamage(finalDamage);
+
+                        // Efecto visual de flecha de tierra
+                        const line = caster.scene.add.line(
+                            0, 0,
+                            caster.sprite.x, caster.sprite.y,
+                            target.sprite.x, target.sprite.y,
+                            0x8B4513, 4
                         );
-                        teleportEffect.setDepth(1000);
-                        
-                        caster.scene.time.delayedCall(500, () => {
-                            teleportEffect.destroy();
+                        line.setDepth(1000);
+
+                        caster.scene.time.delayedCall(400, () => {
+                            line.destroy();
                         });
                     }
-                }
+                },
+                0, // Sin cooldown
+                'tierra' // Elemento tierra
+            ),
+            new Spell(
+                'Flecha Explosiva',
+                4,
+                4,
+                'Flecha de fuego que explota al impactar',
+                (caster, targetX, targetY) => {
+                    const target = caster.scene.grid.cells[targetY][targetX].object;
+                    if (target && target.constructor.name === 'Enemy') {
+                        const baseDamage = caster.attack + 15 + Phaser.Math.Between(-3, 3);
+                        const spell = caster.spells.find(s => s.name === 'Flecha Explosiva');
+                        const finalDamage = spell.calculateDamage(baseDamage, caster);
+                        target.takeDamage(finalDamage);
+
+                        // Efecto visual de flecha de fuego
+                        const line = caster.scene.add.line(
+                            0, 0,
+                            caster.sprite.x, caster.sprite.y,
+                            target.sprite.x, target.sprite.y,
+                            0xff4400, 4
+                        );
+                        line.setDepth(1000);
+
+                        // Explosión
+                        const explosion = caster.scene.add.circle(
+                            target.sprite.x, target.sprite.y, 35, 0xff4400, 0.7
+                        );
+                        explosion.setDepth(1001);
+
+                        caster.scene.time.delayedCall(400, () => {
+                            line.destroy();
+                            explosion.destroy();
+                        });
+                    }
+                },
+                1, // 1 turno de cooldown
+                'fuego' // Elemento fuego
+            ),
+            new Spell(
+                'Flecha de Hielo',
+                3,
+                3,
+                'Flecha congelante que ralentiza al enemigo',
+                (caster, targetX, targetY) => {
+                    const target = caster.scene.grid.cells[targetY][targetX].object;
+                    if (target && target.constructor.name === 'Enemy') {
+                        const baseDamage = caster.attack + 10 + Phaser.Math.Between(-2, 2);
+                        const spell = caster.spells.find(s => s.name === 'Flecha de Hielo');
+                        const finalDamage = spell.calculateDamage(baseDamage, caster);
+                        target.takeDamage(finalDamage);
+
+                        // Efecto visual de flecha de hielo
+                        const line = caster.scene.add.line(
+                            0, 0,
+                            caster.sprite.x, caster.sprite.y,
+                            target.sprite.x, target.sprite.y,
+                            0x00ffff, 4
+                        );
+                        line.setDepth(1000);
+
+                        caster.scene.time.delayedCall(400, () => {
+                            line.destroy();
+                        });
+                    }
+                },
+                0, // Sin cooldown
+                'agua' // Elemento agua
+            ),
+            new Spell(
+                'Flecha del Viento',
+                2,
+                5,
+                'Flecha rápida de aire con largo alcance',
+                (caster, targetX, targetY) => {
+                    const target = caster.scene.grid.cells[targetY][targetX].object;
+                    if (target && target.constructor.name === 'Enemy') {
+                        const baseDamage = caster.attack + 8 + Phaser.Math.Between(-2, 2);
+                        const spell = caster.spells.find(s => s.name === 'Flecha del Viento');
+                        const finalDamage = spell.calculateDamage(baseDamage, caster);
+                        target.takeDamage(finalDamage);
+
+                        // Efecto visual de flecha de aire
+                        const line = caster.scene.add.line(
+                            0, 0,
+                            caster.sprite.x, caster.sprite.y,
+                            target.sprite.x, target.sprite.y,
+                            0xcccccc, 3
+                        );
+                        line.setDepth(1000);
+
+                        caster.scene.time.delayedCall(300, () => {
+                            line.destroy();
+                        });
+                    }
+                },
+                0, // Sin cooldown
+                'aire' // Elemento aire
             )
         ];
     }

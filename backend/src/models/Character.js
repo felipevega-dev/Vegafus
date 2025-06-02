@@ -39,11 +39,38 @@ const characterSchema = new mongoose.Schema({
             current: { type: Number, default: 50 },
             max: { type: Number, default: 50 }
         },
-        attack: { type: Number, default: 20 },
-        defense: { type: Number, default: 10 },
         movementPoints: { type: Number, default: 3 },
         actionPoints: { type: Number, default: 6 }
     },
+    // Características base (como en Dofus)
+    characteristics: {
+        // Características elementales (1 punto = 1% más daño del elemento)
+        tierra: { type: Number, default: 0 },      // Fuerza
+        fuego: { type: Number, default: 0 },       // Inteligencia
+        agua: { type: Number, default: 0 },        // Suerte/Chance
+        aire: { type: Number, default: 0 },        // Agilidad
+        vida: { type: Number, default: 0 },        // Vitalidad (1 punto = +1 HP máximo)
+        sabiduria: { type: Number, default: 0 }    // Sabiduría (1 punto = +1% XP)
+    },
+    // Resistencias elementales (porcentuales)
+    resistances: {
+        tierra: { type: Number, default: 0 },      // % resistencia a tierra
+        fuego: { type: Number, default: 0 },       // % resistencia a fuego
+        agua: { type: Number, default: 0 },        // % resistencia a agua
+        aire: { type: Number, default: 0 }         // % resistencia a aire
+    },
+    // Bonos de daño (para futuro)
+    damageBonus: {
+        flat: { type: Number, default: 0 },        // +X daños planos
+        spellPercent: { type: Number, default: 0 }, // +X% daños de hechizo
+        meleePercent: { type: Number, default: 0 }, // +X% daños cuerpo a cuerpo
+        // Bonos por elemento
+        tierraPercent: { type: Number, default: 0 },
+        fuegoPercent: { type: Number, default: 0 },
+        aguaPercent: { type: Number, default: 0 },
+        airePercent: { type: Number, default: 0 }
+    },
+    capitalPoints: { type: Number, default: 0 }, // Puntos disponibles para distribuir
     position: {
         x: { type: Number, default: 5 },
         y: { type: Number, default: 10 },
@@ -96,16 +123,22 @@ characterSchema.methods.canLevelUp = function() {
 // Método para subir de nivel
 characterSchema.methods.levelUp = function() {
     if (this.canLevelUp()) {
+        const oldLevel = this.level;
         this.level += 1;
-        
-        // Mejorar estadísticas al subir nivel
+
+        // Otorgar 5 puntos de capital por nivel
+        this.capitalPoints += 5;
+
+        // Mejorar estadísticas básicas al subir nivel
         this.stats.hp.max += 20;
         this.stats.hp.current = this.stats.hp.max; // Curación completa
         this.stats.mp.max += 10;
         this.stats.mp.current = this.stats.mp.max;
         this.stats.attack += 5;
         this.stats.defense += 3;
-        
+
+        console.log(`Personaje subió de nivel ${oldLevel} → ${this.level}. Puntos de capital: +5 (Total: ${this.capitalPoints})`);
+
         return true;
     }
     return false;
@@ -120,6 +153,10 @@ characterSchema.methods.toGameJSON = function() {
         level: this.level,
         experience: this.experience,
         stats: this.stats,
+        characteristics: this.characteristics,
+        resistances: this.resistances,
+        damageBonus: this.damageBonus,
+        capitalPoints: this.capitalPoints,
         position: this.position,
         spells: this.spells,
         gameStats: this.gameStats,

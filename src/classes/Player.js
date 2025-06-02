@@ -15,6 +15,36 @@ export class Player {
         this.level = 1;
         this.experience = 0;
 
+        // Sistema de características
+        this.characteristics = {
+            tierra: 0,
+            fuego: 0,
+            agua: 0,
+            aire: 0,
+            vida: 0,
+            sabiduria: 0
+        };
+        this.capitalPoints = 0;
+
+        // Resistencias elementales
+        this.resistances = {
+            tierra: 0,
+            fuego: 0,
+            agua: 0,
+            aire: 0
+        };
+
+        // Bonos de daño (para futuro)
+        this.damageBonus = {
+            flat: 0,
+            spellPercent: 0,
+            meleePercent: 0,
+            tierraPercent: 0,
+            fuegoPercent: 0,
+            aguaPercent: 0,
+            airePercent: 0
+        };
+
         // Puntos de acción por turno
         this.maxActionPoints = 6;
         this.currentActionPoints = 6;

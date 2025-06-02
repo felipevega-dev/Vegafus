@@ -162,8 +162,9 @@ router.put('/:characterId', async (req, res) => {
 
         // Campos que se pueden actualizar
         const allowedUpdates = [
-            'level', 'experience', 'stats', 'position', 
-            'inventory', 'gameStats'
+            'level', 'experience', 'stats', 'position',
+            'inventory', 'gameStats', 'characteristics', 'capitalPoints',
+            'resistances', 'damageBonus'
         ];
 
         // Actualizar solo los campos permitidos
@@ -220,6 +221,70 @@ router.delete('/:characterId', async (req, res) => {
 
     } catch (error) {
         console.error('Error eliminando personaje:', error);
+        res.status(500).json({
+            message: 'Error interno del servidor'
+        });
+    }
+});
+
+// Distribuir puntos de características
+router.post('/:characterId/distribute-points', async (req, res) => {
+    try {
+        const character = await Character.findOne({
+            _id: req.params.characterId,
+            userId: req.userId,
+            isActive: true
+        });
+
+        if (!character) {
+            return res.status(404).json({
+                message: 'Personaje no encontrado'
+            });
+        }
+
+        const { characteristic, points } = req.body;
+
+        // Validar datos
+        if (!characteristic || !points || points <= 0) {
+            return res.status(400).json({
+                message: 'Característica y puntos son requeridos'
+            });
+        }
+
+        // Validar que la característica existe
+        const validCharacteristics = ['tierra', 'fuego', 'agua', 'aire', 'vida', 'sabiduria'];
+        if (!validCharacteristics.includes(characteristic)) {
+            return res.status(400).json({
+                message: 'Característica inválida'
+            });
+        }
+
+        // Verificar que tiene suficientes puntos de capital
+        if (character.capitalPoints < points) {
+            return res.status(400).json({
+                message: 'No tienes suficientes puntos de capital'
+            });
+        }
+
+        // Distribuir puntos
+        character.characteristics[characteristic] += points;
+        character.capitalPoints -= points;
+
+        // Si es vida, aumentar HP máximo
+        if (characteristic === 'vida') {
+            character.stats.hp.max += points;
+            character.stats.hp.current += points; // También curar
+        }
+
+        await character.save();
+
+        res.json({
+            message: 'Puntos distribuidos exitosamente',
+            character: character.toGameJSON()
+        });
+
+    } catch (error) {
+        console.error('Error distribuyendo puntos:', error);
         res.status(500).json({
             message: 'Error interno del servidor'
         });
