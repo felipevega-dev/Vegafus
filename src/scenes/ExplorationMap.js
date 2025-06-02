@@ -184,8 +184,10 @@ export class ExplorationMap extends Phaser.Scene {
             this.player.maxMovementPoints = 999;
             this.player.currentMovementPoints = 999;
 
-            // Actualizar UI después de crear el jugador
-            this.updatePlayerUI();
+            // Actualizar UI después de crear el jugador (con delay para asegurar que todo esté listo)
+            this.time.delayedCall(100, () => {
+                this.updatePlayerUI();
+            });
 
             // Los datos ya están sincronizados desde el backend, no necesitamos guardar aquí
 
@@ -325,15 +327,18 @@ export class ExplorationMap extends Phaser.Scene {
     }
 
     updatePlayerUI() {
+        if (!this.player) {
+            console.log('⚠️ No hay jugador para actualizar UI');
+            return;
+        }
+
         // Actualizar información del jugador solo si existe
         if (this.playerInfo && this.playerInfo.setText) {
             this.playerInfo.setText(`HP: ${this.player.currentHP}/${this.player.maxHP} | Nivel: ${this.player.level}`);
         }
 
         // Actualizar barra de experiencia
-        if (this.expBar && this.updateExperienceBar) {
-            this.updateExperienceBar();
-        }
+        this.updateExperienceBar();
     }
 
     spawnRandomMonsters() {
@@ -627,26 +632,30 @@ export class ExplorationMap extends Phaser.Scene {
     }
 
     updateExperienceBar() {
+        if (!this.player) {
+            console.log('⚠️ No hay jugador para actualizar XP');
+            return;
+        }
+
         const currentLevel = this.player.level;
         const currentExp = this.player.experience;
+        const expForNextLevel = currentLevel * 200; // XP necesaria para el siguiente nivel
 
-        // Calcular experiencia para el nivel actual y siguiente
-        const expForCurrentLevel = (currentLevel - 1) * 200;
-        const expForNextLevel = currentLevel * 200;
-        const expInCurrentLevel = currentExp - expForCurrentLevel;
-        const expNeededForLevel = expForNextLevel - expForCurrentLevel;
-
-        // Calcular porcentaje
-        const percentage = Math.max(0, Math.min(1, expInCurrentLevel / expNeededForLevel));
+        // Calcular porcentaje de progreso hacia el siguiente nivel
+        const percentage = Math.max(0, Math.min(1, currentExp / expForNextLevel));
 
         // Actualizar barra visual
         const barWidth = 180;
-        this.expBar.width = barWidth * percentage;
+        if (this.expBar) {
+            this.expBar.width = barWidth * percentage;
+        }
 
         // Actualizar texto
-        this.expText.setText(`XP: ${expInCurrentLevel}/${expNeededForLevel} (Total: ${currentExp})`);
+        if (this.expText) {
+            this.expText.setText(`XP: ${currentExp}/${expForNextLevel} (${Math.round(percentage * 100)}%)`);
+        }
 
-        console.log(`Barra XP actualizada: ${expInCurrentLevel}/${expNeededForLevel} (${Math.round(percentage * 100)}%)`);
+        console.log(`✅ Barra XP actualizada: ${currentExp}/${expForNextLevel} (${Math.round(percentage * 100)}%)`);
     }
 
     // Métodos de preview (simplificados del combate)
