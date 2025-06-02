@@ -51,6 +51,7 @@ export class IsometricMap extends Phaser.Scene {
         this.attackIndicators = [];
         this.selectedSpellIndex = -1;
         this.spellMode = false;
+        this.spellRangeIndicators = [];
     }
     createSymmetricMap() {
         // Crear mapa simétrico de 15x15 para combate (formato cuadrado)
@@ -100,9 +101,12 @@ export class IsometricMap extends Phaser.Scene {
                     this.grid.cells[y][x].walkable = false;
                 } else if (tileType === 'iso-water') {
                     if (isPositioningZone) {
-                        cellBg.setFillStyle(0x4169E1, 0.6); // Azul para zonas de posicionamiento
+                        cellBg.setFillStyle(0x0088ff, 0.8); // Azul brillante para zonas de posicionamiento
                         this.grid.cells[y][x].walkable = true; // Las zonas azules son caminables
                         this.grid.cells[y][x].isPositioningZone = true;
+
+                        // Añadir borde especial para zonas de posicionamiento
+                        cellBorder.setStrokeStyle(2, 0x00aaff, 1.0);
                     } else {
                         cellBg.setFillStyle(0x4169E1, 0.6); // Azul para agua normal
                         this.grid.cells[y][x].walkable = false;
@@ -120,10 +124,10 @@ export class IsometricMap extends Phaser.Scene {
                 // Efectos de hover
                 cellBg.on('pointerover', () => {
                     if (this.turnManager.gameState === 'positioning') {
-                        // Durante posicionamiento, resaltar celdas válidas
+                        // Durante posicionamiento, resaltar solo celdas azules válidas
                         const currentCell = this.grid.cells[y][x];
-                        if (currentCell.walkable && (isPositioningZone || !currentCell.occupied)) {
-                            cellBg.setFillStyle(cellBg.fillColor, 0.8); // Más opaco
+                        if (currentCell.walkable && currentCell.isPositioningZone && !currentCell.occupied) {
+                            cellBg.setFillStyle(0xffff00, 0.8); // Amarillo brillante para indicar válido
                         }
                     } else if (this.turnManager.isPlayerTurn && this.turnManager.gameState === 'playing') {
                         this.showMovementPreview(x, y);
@@ -136,7 +140,11 @@ export class IsometricMap extends Phaser.Scene {
                         if (tileType === 'iso-stone') {
                             cellBg.setFillStyle(0x696969, 0.8);
                         } else if (tileType === 'iso-water') {
-                            cellBg.setFillStyle(0x4169E1, 0.6);
+                            if (isPositioningZone) {
+                                cellBg.setFillStyle(0x0088ff, 0.8); // Azul brillante para zonas de posicionamiento
+                            } else {
+                                cellBg.setFillStyle(0x4169E1, 0.6); // Azul normal para agua
+                            }
                         } else {
                             cellBg.setFillStyle(0x228B22, 0.3);
                         }
@@ -312,8 +320,13 @@ export class IsometricMap extends Phaser.Scene {
     }
 
     selectSpell(spellIndex) {
+        if (this.turnManager.gameState !== 'playing') return;
+
         this.selectedSpellIndex = spellIndex;
         this.spellMode = true;
+
+        // Mostrar rango del hechizo
+        this.showSpellRange(spellIndex);
 
         // Actualizar colores de botones
         this.spellButtons.forEach((button, index) => {
@@ -330,7 +343,8 @@ export class IsometricMap extends Phaser.Scene {
     setupControls() {
         // Configurar input del mouse para movimiento y hechizos
         this.input.on('pointerdown', (pointer) => {
-            if (this.turnManager.isPlayerTurn && this.turnManager.gameState === 'playing') {
+            if (this.turnManager.gameState === 'positioning' ||
+                (this.turnManager.isPlayerTurn && this.turnManager.gameState === 'playing')) {
                 this.handleMouseClick(pointer);
             }
         });
@@ -353,7 +367,9 @@ export class IsometricMap extends Phaser.Scene {
         this.escapeKey.on('down', () => {
             this.spellMode = false;
             this.selectedSpellIndex = -1;
+            this.clearSpellRange();
             this.updateSpellButtons();
+            console.log('Selección de hechizo cancelada');
         });
 
         // Tecla para terminar turno
@@ -373,18 +389,25 @@ export class IsometricMap extends Phaser.Scene {
         // Convertir coordenadas del mouse a coordenadas de grid
         const gridPos = this.grid.worldToGrid(pointer.worldX, pointer.worldY);
 
+        // Debug: mostrar coordenadas del click
+        console.log(`Click en: mouse(${Math.round(pointer.worldX)}, ${Math.round(pointer.worldY)}) -> grid(${gridPos.x}, ${gridPos.y})`);
+
         // Verificar si la posición es válida
         if (gridPos.x < 0 || gridPos.y < 0 || gridPos.x >= this.grid.width || gridPos.y >= this.grid.height) {
+            console.log('Click fuera del grid');
             return;
         }
 
         // Fase de posicionamiento
         if (this.turnManager.gameState === 'positioning') {
-            // Solo permitir movimiento a celdas azules (zonas de posicionamiento) o hierba
+            // Solo permitir movimiento a celdas azules (zonas de posicionamiento)
             const cell = this.grid.cells[gridPos.y][gridPos.x];
-            if (cell.walkable && (cell.isPositioningZone || !cell.occupied)) {
+            if (cell.walkable && cell.isPositioningZone && !cell.occupied) {
                 // Mover jugador sin restricciones de puntos de movimiento durante posicionamiento
                 this.movePlayerToPosition(gridPos.x, gridPos.y);
+                console.log(`Jugador movido a posición azul: ${gridPos.x}, ${gridPos.y}`);
+            } else {
+                console.log(`Celda no válida para posicionamiento: walkable=${cell.walkable}, isPositioningZone=${cell.isPositioningZone}, occupied=${cell.occupied}`);
             }
             return;
         }
@@ -394,6 +417,7 @@ export class IsometricMap extends Phaser.Scene {
             if (this.player.castSpell(this.selectedSpellIndex, gridPos.x, gridPos.y)) {
                 this.spellMode = false;
                 this.selectedSpellIndex = -1;
+                this.clearSpellRange();
                 this.updateSpellButtons();
                 this.turnManager.updateTurnUI();
 
@@ -507,6 +531,77 @@ export class IsometricMap extends Phaser.Scene {
             }
         });
         this.movementIndicators = [];
+    }
+
+    // Mostrar rango de hechizo
+    showSpellRange(spellIndex) {
+        this.clearSpellRange();
+
+        if (spellIndex < 0 || spellIndex >= this.player.spells.length) return;
+
+        const spell = this.player.spells[spellIndex];
+        const playerX = this.player.gridX;
+        const playerY = this.player.gridY;
+
+        // Mostrar todas las celdas en rango
+        for (let y = 0; y < this.grid.height; y++) {
+            for (let x = 0; x < this.grid.width; x++) {
+                const distance = this.grid.getDistance(playerX, playerY, x, y);
+
+                if (distance <= spell.range && distance > 0) {
+                    const worldPos = this.grid.gridToWorld(x, y);
+
+                    // Color según si es un objetivo válido
+                    const cell = this.grid.cells[y][x];
+                    const hasEnemy = cell.object && cell.object.constructor.name === 'Enemy';
+                    const color = hasEnemy ? 0xff0000 : 0x0088ff; // Rojo para enemigos, azul para celdas vacías
+
+                    const rangeIndicator = this.add.rectangle(
+                        worldPos.x, worldPos.y,
+                        this.grid.tileSize - 6, this.grid.tileSize - 6,
+                        color, 0.4
+                    );
+                    rangeIndicator.setDepth(60);
+
+                    // Añadir borde
+                    const border = this.add.rectangle(
+                        worldPos.x, worldPos.y,
+                        this.grid.tileSize - 6, this.grid.tileSize - 6
+                    );
+                    border.setStrokeStyle(2, color, 0.8);
+                    border.setDepth(61);
+
+                    this.spellRangeIndicators.push(rangeIndicator);
+                    this.spellRangeIndicators.push(border);
+                }
+            }
+        }
+
+        // Mostrar información del hechizo
+        const spellInfo = this.add.text(
+            this.player.sprite.x, this.player.sprite.y - 60,
+            `${spell.name} - Rango: ${spell.range}`,
+            {
+                fontSize: '12px',
+                fontFamily: 'Arial',
+                color: '#ffffff',
+                backgroundColor: '#000000',
+                padding: { x: 6, y: 3 }
+            }
+        );
+        spellInfo.setOrigin(0.5);
+        spellInfo.setDepth(62);
+        this.spellRangeIndicators.push(spellInfo);
+    }
+
+    // Limpiar preview de rango de hechizo
+    clearSpellRange() {
+        this.spellRangeIndicators.forEach(indicator => {
+            if (indicator && indicator.destroy) {
+                indicator.destroy();
+            }
+        });
+        this.spellRangeIndicators = [];
     }
 }
 

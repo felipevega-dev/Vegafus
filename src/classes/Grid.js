@@ -25,8 +25,9 @@ export class Grid {
 
     // Convertir coordenadas de mundo a coordenadas de grid
     worldToGrid(worldX, worldY) {
-        const x = Math.floor((worldX - this.startX) / this.tileSize);
-        const y = Math.floor((worldY - this.startY) / this.tileSize);
+        // Ajustar para que el centro de la celda sea el punto de referencia
+        const x = Math.floor((worldX - this.startX + this.tileSize/2) / this.tileSize);
+        const y = Math.floor((worldY - this.startY + this.tileSize/2) / this.tileSize);
         return { x, y };
     }
 

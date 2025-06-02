@@ -89,63 +89,46 @@ export class SpellLibrary {
             ),
             new Spell(
                 'Carga',
-                15,
                 3,
-                3,
+                2,
                 'Se mueve hacia el enemigo y lo ataca',
                 (caster, targetX, targetY) => {
-                    // Mover al jugador hacia el objetivo
-                    const path = SpellLibrary.getLinePath(caster.gridX, caster.gridY, targetX, targetY);
-                    
-                    // Encontrar la posición más cercana al objetivo
-                    let moveToX = caster.gridX;
-                    let moveToY = caster.gridY;
-                    
-                    for (let i = 1; i < path.length; i++) {
-                        if (caster.scene.grid.isWalkable(path[i].x, path[i].y)) {
-                            moveToX = path[i].x;
-                            moveToY = path[i].y;
-                        } else {
-                            break;
-                        }
+                    const target = caster.scene.grid.cells[targetY][targetX].object;
+                    if (target && target.constructor.name === 'Enemy') {
+                        const damage = caster.attack + 5 + Phaser.Math.Between(-2, 2);
+                        target.takeDamage(damage);
+
+                        // Efecto visual de carga
+                        const worldPos = caster.scene.grid.gridToWorld(targetX, targetY);
+                        const effect = caster.scene.add.circle(
+                            worldPos.x, worldPos.y, 25, 0xffa500, 0.7
+                        );
+                        effect.setDepth(1000);
+
+                        caster.scene.time.delayedCall(400, () => {
+                            effect.destroy();
+                        });
+
+                        console.log(`Carga ejecutada: ${damage} de daño`);
                     }
-                    
-                    // Mover y atacar
-                    caster.scene.grid.setFree(caster.gridX, caster.gridY);
-                    caster.gridX = moveToX;
-                    caster.gridY = moveToY;
-                    caster.scene.grid.setOccupied(caster.gridX, caster.gridY, caster);
-                    
-                    // Actualizar posición visual
-                    const isoPos = caster.scene.grid.gridToIso(caster.gridX, caster.gridY);
-                    caster.sprite.setPosition(640 + isoPos.x, 300 + isoPos.y);
-                    
-                    // Atacar si está en rango
-                    const distance = caster.scene.grid.getDistance(caster.gridX, caster.gridY, targetX, targetY);
-                    if (distance === 1) {
-                        const target = caster.scene.grid.cells[targetY][targetX].object;
-                        if (target && target.constructor.name === 'Enemy') {
-                            const damage = caster.attack + Phaser.Math.Between(-2, 2);
-                            target.takeDamage(damage);
-                        }
-                    }
-                }
+                },
+                0 // Sin cooldown
             ),
             new Spell(
                 'Grito de Guerra',
-                20,
                 2,
                 0,
                 'Aumenta el ataque temporalmente',
-                (caster, targetX, targetY) => {
+                (caster) => {
                     caster.attack += 10;
                     caster.sprite.setTint(0xff8800); // Efecto visual
-                    
+
                     // Efecto temporal (3 turnos)
                     caster.warCryTurns = 3;
-                    
+
                     console.log('¡Ataque aumentado por 3 turnos!');
-                }
+                },
+                2 // 2 turnos de cooldown
             )
         ];
     }
@@ -154,7 +137,6 @@ export class SpellLibrary {
         return [
             new Spell(
                 'Bola de Fuego',
-                3,
                 4,
                 4,
                 'Lanza una bola de fuego que causa daño en área',
@@ -169,81 +151,84 @@ export class SpellLibrary {
                                     const damage = Math.floor((30 - distance * 5)) + Phaser.Math.Between(-3, 3);
                                     if (damage > 0) {
                                         target.takeDamage(damage);
+                                        console.log(`Bola de fuego: ${damage} de daño a enemigo en ${x},${y}`);
                                     }
                                 }
-                                
+
                                 // Efecto visual de fuego
-                                const isoPos = caster.scene.grid.gridToIso(x, y);
+                                const worldPos = caster.scene.grid.gridToWorld(x, y);
                                 const fireEffect = caster.scene.add.circle(
-                                    640 + isoPos.x, 300 + isoPos.y, 20, 0xff4400, 0.7
+                                    worldPos.x, worldPos.y, 20, 0xff4400, 0.7
                                 );
                                 fireEffect.setDepth(1000);
-                                
+
                                 caster.scene.time.delayedCall(1000, () => {
                                     fireEffect.destroy();
                                 });
                             }
                         }
                     }
-                }
+                },
+                1 // 1 turno de cooldown
             ),
             new Spell(
                 'Rayo',
                 4,
                 3,
-                5,
                 'Ataca en línea recta atravesando enemigos',
                 (caster, targetX, targetY) => {
                     const path = SpellLibrary.getLinePath(caster.gridX, caster.gridY, targetX, targetY);
-                    
+
                     for (let i = 1; i < path.length; i++) {
                         const x = path[i].x;
                         const y = path[i].y;
-                        
+
                         if (x >= 0 && y >= 0 && x < caster.scene.grid.width && y < caster.scene.grid.height) {
                             const target = caster.scene.grid.cells[y][x].object;
                             if (target && target.constructor.name === 'Enemy') {
                                 const damage = 25 + Phaser.Math.Between(-5, 5);
                                 target.takeDamage(damage);
+                                console.log(`Rayo: ${damage} de daño a enemigo en ${x},${y}`);
                             }
-                            
+
                             // Efecto visual de rayo
-                            const isoPos = caster.scene.grid.gridToIso(x, y);
+                            const worldPos = caster.scene.grid.gridToWorld(x, y);
                             const lightningEffect = caster.scene.add.circle(
-                                640 + isoPos.x, 300 + isoPos.y, 15, 0x00ffff, 0.8
+                                worldPos.x, worldPos.y, 15, 0x00ffff, 0.8
                             );
                             lightningEffect.setDepth(1000);
-                            
+
                             caster.scene.time.delayedCall(300, () => {
                                 lightningEffect.destroy();
                             });
                         }
                     }
-                }
+                },
+                0 // Sin cooldown
             ),
             new Spell(
                 'Curación',
-                6,
                 3,
                 0,
                 'Restaura puntos de vida',
-                (caster, targetX, targetY) => {
+                (caster) => {
                     const healAmount = 40 + Phaser.Math.Between(-5, 5);
                     caster.currentHP = Math.min(caster.maxHP, caster.currentHP + healAmount);
                     caster.updateHealthBar();
-                    
+
                     // Efecto visual de curación
                     const healEffect = caster.scene.add.circle(
                         caster.sprite.x, caster.sprite.y, 40, 0x00ff00, 0.5
                     );
                     healEffect.setDepth(1000);
-                    
+
                     caster.scene.time.delayedCall(800, () => {
                         healEffect.destroy();
                     });
-                    
+
                     console.log(`¡Curado ${healAmount} puntos de vida!`);
-                }
+                },
+                2 // 2 turnos de cooldown
             )
         ];
     }
