@@ -1,4 +1,7 @@
 import { Grid } from '../classes/Grid.js';
+import { Player } from '../classes/Player.js';
+import { Enemy } from '../classes/Enemy.js';
+import { TurnManager } from '../systems/TurnManager.js';
 
 export class IsometricMap extends Phaser.Scene {
     constructor() {
@@ -25,12 +28,24 @@ export class IsometricMap extends Phaser.Scene {
         // Crear mapa simple
         this.createMap();
 
-        // Añadir personaje
+        // Crear jugador y enemigos
         this.createPlayer();
+        this.createEnemies();
+
+        // Crear sistema de turnos
+        this.createTurnSystem();
+
+        // Configurar controles
+        this.setupControls();
 
         // Configurar cámara
         this.cameras.main.setBounds(0, 0, 1280, 720);
-        this.cameras.main.startFollow(this.player);
+        this.cameras.main.startFollow(this.player.sprite);
+
+        // Variables para el sistema de movimiento
+        this.selectedCell = null;
+        this.movementIndicators = [];
+        this.attackIndicators = [];
     }
     createMap() {
         // Implementación básica - se mejorará después
@@ -55,17 +70,93 @@ export class IsometricMap extends Phaser.Scene {
     }
 
     createPlayer() {
-        // Posición inicial del jugador
-        const startX = 640;
-        const startY = 300;
+        // Crear jugador en posición inicial del grid
+        this.player = new Player(this, 2, 2);
+    }
 
-        // Crear sprite del jugador
-        this.player = this.add.sprite(startX, startY, 'character');
-        this.player.setDepth(startY + 1); // Para que aparezca sobre los tiles
+    createEnemies() {
+        // Crear algunos enemigos en diferentes posiciones
+        this.enemies = [];
+
+        // Enemigo básico
+        this.enemies.push(new Enemy(this, 6, 6, 'basic'));
+
+        // Enemigo fuerte
+        this.enemies.push(new Enemy(this, 7, 3, 'strong'));
+
+        // Enemigo rápido
+        this.enemies.push(new Enemy(this, 3, 7, 'fast'));
+    }
+
+    createTurnSystem() {
+        // Crear gestor de turnos
+        this.turnManager = new TurnManager(this);
+
+        // Añadir jugador al sistema de turnos
+        this.turnManager.addEntity(this.player);
+
+        // Añadir enemigos al sistema de turnos
+        this.enemies.forEach(enemy => {
+            this.turnManager.addEntity(enemy);
+        });
+
+        // Iniciar combate
+        this.turnManager.startCombat();
+    }
+
+    setupControls() {
+        // Configurar input del mouse para movimiento
+        this.input.on('pointerdown', (pointer) => {
+            if (this.turnManager.isPlayerTurn && this.turnManager.gameState === 'playing') {
+                this.handleMouseClick(pointer);
+            }
+        });
+
+        // Configurar teclas
+        this.cursors = this.input.keyboard.createCursorKeys();
+        this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+        this.attackKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+
+        // Tecla para terminar turno
+        this.endTurnKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+        this.endTurnKey.on('down', () => {
+            if (this.turnManager.isPlayerTurn && this.turnManager.gameState === 'playing') {
+                this.turnManager.nextTurn();
+            }
+        });
+    }
+
+    handleMouseClick(pointer) {
+        // Convertir coordenadas del mouse a coordenadas de grid
+        const worldX = pointer.worldX - 640;
+        const worldY = pointer.worldY - 300;
+        const gridPos = this.grid.isoToGrid(worldX, worldY);
+
+        // Verificar si la posición es válida
+        if (gridPos.x < 0 || gridPos.y < 0 || gridPos.x >= this.grid.width || gridPos.y >= this.grid.height) {
+            return;
+        }
+
+        // Verificar si hay un enemigo en esa posición
+        const targetEnemy = this.enemies.find(enemy =>
+            enemy.isAlive && enemy.gridX === gridPos.x && enemy.gridY === gridPos.y
+        );
+
+        if (targetEnemy) {
+            // Intentar atacar al enemigo
+            if (this.player.attackEnemy(targetEnemy)) {
+                this.turnManager.updateTurnUI();
+                // Verificar si el juego ha terminado después del ataque
+                this.turnManager.checkGameEnd();
+            }
+        } else {
+            // Intentar mover al jugador
+            if (this.player.moveTo(gridPos.x, gridPos.y)) {
+                this.turnManager.updateTurnUI();
+            }
+        }
     }
 }
-
-
 
 
 
