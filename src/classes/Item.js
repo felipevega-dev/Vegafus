@@ -120,6 +120,38 @@ export class Item {
         item.requirements = data.requirements || {};
         return item;
     }
+
+    // Métodos helper para configuración fluida
+    setDescription(description) {
+        this.description = description;
+        return this;
+    }
+
+    setValue(value) {
+        this.value = value;
+        return this;
+    }
+
+    setStats(stats) {
+        this.stats = { ...this.stats, ...stats };
+        return this;
+    }
+
+    setEffects(effects) {
+        this.effects = effects;
+        return this;
+    }
+
+    setRequirements(requirements) {
+        this.requirements = { ...this.requirements, ...requirements };
+        return this;
+    }
+
+    setStackable(stackable, maxStack = 99) {
+        this.stackable = stackable;
+        this.maxStack = maxStack;
+        return this;
+    }
 }
 
 /**

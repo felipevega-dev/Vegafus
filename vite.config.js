@@ -33,7 +33,9 @@ export default defineConfig({
       '@classes': '/src/classes',
       '@systems': '/src/systems',
       '@utils': '/src/utils',
-      '@styles': '/src/styles'
+      '@styles': '/src/styles',
+      '@data': '/src/data',
+      '@config': '/src/config'
     }
   },
   assetsInclude: ['**/*.png', '**/*.jpg', '**/*.jpeg', '**/*.gif', '**/*.svg', '**/*.mp3', '**/*.wav', '**/*.ogg']

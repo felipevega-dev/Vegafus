@@ -3,6 +3,8 @@ import { PlayerInfoPanel } from '@components/UI/PlayerInfoPanel.js';
 import { ExperienceBar } from '@components/UI/ExperienceBar.js';
 import { GameInstructions } from '@components/UI/GameInstructions.js';
 import { UserInfoPanel } from '@components/UI/UserInfoPanel.js';
+import { RightSidePanel } from '@components/UI/RightSidePanel.js';
+import { InventoryPanel } from '@components/UI/InventoryPanel.js';
 import { MapGenerator } from '@components/MapGenerator.js';
 import { MonsterManager } from '@systems/combat/MonsterManager.js';
 import { MovementSystem } from '@systems/MovementSystem.js';
@@ -127,12 +129,12 @@ export class ExplorationMapRefactored extends Phaser.Scene {
     }
 
     createUI() {
-        // Crear componentes de UI
+        // Crear componentes de UI básicos
         this.playerInfoPanel = new PlayerInfoPanel(this);
         this.experienceBar = new ExperienceBar(this);
         this.gameInstructions = new GameInstructions(this);
 
-        // Botón de características
+        // Botón de características (mantener por compatibilidad)
         const characteristicsBtn = this.add.text(120, 80, 'CARACTERÍSTICAS (C)', {
             fontSize: '12px',
             fontFamily: 'Arial',
@@ -167,6 +169,22 @@ export class ExplorationMapRefactored extends Phaser.Scene {
 
         if (this.experienceBar) {
             this.experienceBar.updatePlayer(this.player);
+        }
+
+        // Crear panel lateral derecho si no existe
+        if (!this.rightSidePanel) {
+            console.log('🎮 Creando panel lateral derecho...');
+            console.log('🎮 Escena actual:', this.scene.key);
+            console.log('🎮 Jugador disponible:', !!this.player);
+            this.rightSidePanel = new RightSidePanel(this, this.player);
+            console.log('🎮 Panel lateral derecho creado:', !!this.rightSidePanel);
+        }
+
+        // Crear panel de inventario si no existe
+        if (!this.inventoryPanel) {
+            console.log('🎒 Creando panel de inventario...');
+            this.inventoryPanel = new InventoryPanel(this, this.player);
+            this.inventoryPanel.create();
         }
     }
 
@@ -226,6 +244,12 @@ export class ExplorationMapRefactored extends Phaser.Scene {
         }
         if (this.userInfoPanel) {
             this.userInfoPanel.destroy();
+        }
+        if (this.rightSidePanel) {
+            this.rightSidePanel.destroy();
+        }
+        if (this.inventoryPanel) {
+            this.inventoryPanel.destroy();
         }
     }
 

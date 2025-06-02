@@ -1,5 +1,6 @@
 import { Player } from '../classes/Player.js';
 import { Grid } from '../classes/Grid.js';
+import { RightSidePanel } from '@components/UI/RightSidePanel.js';
 
 export class ExplorationMap extends Phaser.Scene {
     constructor() {
@@ -48,8 +49,8 @@ export class ExplorationMap extends Phaser.Scene {
         // Verificar si viene del combate (para recargar datos del backend)
         this.comingFromCombat = this.registry.get('playerData') !== null;
 
-        // Crear grid más grande para exploración
-        this.grid = new Grid(this, 30, 20); // 30x20 para exploración
+        // Crear grid ajustado para exploración con panel lateral
+        this.grid = new Grid(this, 28, 20); // 28x20 para exploración
 
         // Variables del sistema
         this.selectedCell = null;
@@ -86,13 +87,13 @@ export class ExplorationMap extends Phaser.Scene {
     }
 
     createExplorationMap() {
-        // Crear mapa de exploración más grande (30x20)
+        // Crear mapa de exploración ajustado para el panel lateral (28x20)
         const tileSize = 32; // Tiles más pequeños para el mapa de exploración
         const startX = 50;
         const startY = 50;
 
         for (let y = 0; y < 20; y++) {
-            for (let x = 0; x < 30; x++) {
+            for (let x = 0; x < 28; x++) {
                 const posX = startX + (x * tileSize);
                 const posY = startY + (y * tileSize);
 
@@ -101,7 +102,7 @@ export class ExplorationMap extends Phaser.Scene {
                 let walkable = true;
 
                 // Bordes del mapa
-                if (x === 0 || y === 0 || x === 29 || y === 19) {
+                if (x === 0 || y === 0 || x === 27 || y === 19) {
                     tileType = 'mountain';
                     walkable = false;
                 }
@@ -398,12 +399,6 @@ export class ExplorationMap extends Phaser.Scene {
             this.playerInfo.setText(`HP: ${this.player.currentHP}/${this.player.maxHP} | Nivel: ${this.player.level}`);
         }
 
-        // Actualizar información de puntos de capital
-        if (this.capitalPointsInfo && this.capitalPointsInfo.setText) {
-            this.capitalPointsInfo.setText(`💰 Puntos de capital: ${this.player.capitalPoints}`);
-            this.capitalPointsInfo.setColor(this.player.capitalPoints > 0 ? '#ffff00' : '#cccccc');
-        }
-
         // Actualizar barra de experiencia
         this.updateExperienceBar();
     }
@@ -418,11 +413,11 @@ export class ExplorationMap extends Phaser.Scene {
             let attempts = 0;
             
             do {
-                x = Phaser.Math.Between(2, 27);
+                x = Phaser.Math.Between(2, 25);
                 y = Phaser.Math.Between(2, 17);
                 attempts++;
-            } while ((!this.grid.isWalkable(x, y) || this.grid.cells[y][x].occupied || 
-                     this.grid.getDistance(x, y, this.player.gridX, this.player.gridY) < 3) && 
+            } while ((!this.grid.isWalkable(x, y) || this.grid.cells[y][x].occupied ||
+                     this.grid.getDistance(x, y, this.player.gridX, this.player.gridY) < 3) &&
                      attempts < 50);
             
             if (attempts < 50) {
@@ -625,13 +620,13 @@ export class ExplorationMap extends Phaser.Scene {
     }
 
     createUI() {
-        // Panel de información del jugador (más grande)
-        const playerPanel = this.add.rectangle(120, 40, 220, 70, 0x000000, 0.8);
+        // Panel de información del jugador más limpio
+        const playerPanel = this.add.rectangle(120, 40, 220, 50, 0x1a1a1a, 0.9);
         playerPanel.setDepth(1000);
-        playerPanel.setStrokeStyle(2, 0x444444);
+        playerPanel.setStrokeStyle(2, 0x666666);
 
         // Información básica del jugador
-        this.playerInfo = this.add.text(120, 20,
+        this.playerInfo = this.add.text(120, 30,
             `HP: ${this.player.currentHP}/${this.player.maxHP} | Nivel: ${this.player.level}`, {
             fontSize: '12px',
             fontFamily: 'Arial',
@@ -640,16 +635,6 @@ export class ExplorationMap extends Phaser.Scene {
         });
         this.playerInfo.setOrigin(0.5);
         this.playerInfo.setDepth(1001);
-
-        // Información de puntos de capital
-        this.capitalPointsInfo = this.add.text(120, 35, `💰 Puntos de capital: ${this.player.capitalPoints}`, {
-            fontSize: '11px',
-            fontFamily: 'Arial',
-            color: this.player.capitalPoints > 0 ? '#ffff00' : '#cccccc',
-            align: 'center'
-        });
-        this.capitalPointsInfo.setOrigin(0.5);
-        this.capitalPointsInfo.setDepth(1001);
 
         // Barra de experiencia
         this.createExperienceBar();
@@ -661,47 +646,155 @@ export class ExplorationMap extends Phaser.Scene {
             color: '#ffffff'
         }).setDepth(1001);
 
-        // Botón de características
-        const characteristicsBtn = this.add.text(120, 80, 'CARACTERÍSTICAS (C)', {
-            fontSize: '12px',
+        // Botón de características más elegante
+        const characteristicsBtn = this.add.text(120, 75, 'CARACTERÍSTICAS (C)', {
+            fontSize: '11px',
             fontFamily: 'Arial',
-            color: '#ffff00',
-            backgroundColor: '#333333',
+            color: '#ffdd00',
+            backgroundColor: '#2d2d2d',
             padding: { x: 8, y: 4 }
         });
         characteristicsBtn.setOrigin(0.5);
         characteristicsBtn.setDepth(1001);
         characteristicsBtn.setInteractive();
         characteristicsBtn.on('pointerdown', () => this.openCharacteristics());
+        characteristicsBtn.on('pointerover', () => {
+            characteristicsBtn.setStyle({ backgroundColor: '#404040' });
+        });
+        characteristicsBtn.on('pointerout', () => {
+            characteristicsBtn.setStyle({ backgroundColor: '#2d2d2d' });
+        });
 
-        // Mostrar información del usuario y botón de logout si está autenticado
+        // Mostrar información del usuario con botón de configuración si está autenticado
         if (this.userData) {
-            this.add.text(1100, 20, `Usuario: ${this.userData.username}`, {
+            // Nombre de usuario
+            this.userText = this.add.text(1100, 20, `${this.userData.username}`, {
                 fontSize: '12px',
                 fontFamily: 'Arial',
                 color: '#ffffff'
             }).setDepth(1001);
 
-            // Botón de logout
-            const logoutButton = this.add.text(1200, 40, 'LOGOUT', {
-                fontSize: '12px',
+            // Botón de configuración (⚙️)
+            this.configButton = this.add.text(1200, 20, '⚙️', {
+                fontSize: '16px',
                 fontFamily: 'Arial',
-                color: '#ff4444',
+                color: '#cccccc',
                 backgroundColor: '#333333',
-                padding: { x: 8, y: 4 }
+                padding: { x: 6, y: 2 }
             });
-            logoutButton.setOrigin(0.5);
-            logoutButton.setDepth(1001);
-            logoutButton.setInteractive();
-            logoutButton.on('pointerdown', () => this.handleLogout());
+            this.configButton.setOrigin(0.5);
+            this.configButton.setDepth(1001);
+            this.configButton.setInteractive();
+            this.configButton.on('pointerdown', () => this.toggleConfigMenu());
+            this.configButton.on('pointerover', () => {
+                this.configButton.setColor('#ffffff');
+                this.configButton.setStyle({ backgroundColor: '#555555' });
+            });
+            this.configButton.on('pointerout', () => {
+                this.configButton.setColor('#cccccc');
+                this.configButton.setStyle({ backgroundColor: '#333333' });
+            });
+
+            // Menú de configuración (inicialmente oculto)
+            this.createConfigMenu();
         }
+
+        // Panel lateral derecho
+        console.log('🎮 Creando panel lateral derecho en ExplorationMap...');
+        this.rightSidePanel = new RightSidePanel(this, this.player);
+    }
+
+    createConfigMenu() {
+        // Panel del menú de configuración
+        this.configMenuPanel = this.add.rectangle(1150, 80, 120, 80, 0x1a1a1a, 0.95);
+        this.configMenuPanel.setDepth(2000);
+        this.configMenuPanel.setStrokeStyle(2, 0x666666);
+        this.configMenuPanel.setVisible(false);
+
+        // Botón de logout
+        this.logoutButton = this.add.text(1150, 70, 'Cerrar Sesión', {
+            fontSize: '11px',
+            fontFamily: 'Arial',
+            color: '#ff4444',
+            backgroundColor: '#2a2a2a',
+            padding: { x: 8, y: 4 }
+        });
+        this.logoutButton.setOrigin(0.5);
+        this.logoutButton.setDepth(2001);
+        this.logoutButton.setInteractive();
+        this.logoutButton.setVisible(false);
+        this.logoutButton.on('pointerdown', () => {
+            this.hideConfigMenu();
+            this.handleLogout();
+        });
+        this.logoutButton.on('pointerover', () => {
+            this.logoutButton.setStyle({ backgroundColor: '#444444' });
+        });
+        this.logoutButton.on('pointerout', () => {
+            this.logoutButton.setStyle({ backgroundColor: '#2a2a2a' });
+        });
+
+        // Botón de configuración (placeholder para futuras opciones)
+        this.settingsButton = this.add.text(1150, 95, 'Configuración', {
+            fontSize: '11px',
+            fontFamily: 'Arial',
+            color: '#cccccc',
+            backgroundColor: '#2a2a2a',
+            padding: { x: 8, y: 4 }
+        });
+        this.settingsButton.setOrigin(0.5);
+        this.settingsButton.setDepth(2001);
+        this.settingsButton.setInteractive();
+        this.settingsButton.setVisible(false);
+        this.settingsButton.on('pointerdown', () => {
+            console.log('⚙️ Configuración clickeada (próximamente)');
+            this.hideConfigMenu();
+        });
+        this.settingsButton.on('pointerover', () => {
+            this.settingsButton.setStyle({ backgroundColor: '#444444' });
+        });
+        this.settingsButton.on('pointerout', () => {
+            this.settingsButton.setStyle({ backgroundColor: '#2a2a2a' });
+        });
+
+        this.configMenuVisible = false;
+    }
+
+    toggleConfigMenu() {
+        if (this.configMenuVisible) {
+            this.hideConfigMenu();
+        } else {
+            this.showConfigMenu();
+        }
+    }
+
+    showConfigMenu() {
+        this.configMenuPanel.setVisible(true);
+        this.logoutButton.setVisible(true);
+        this.settingsButton.setVisible(true);
+        this.configMenuVisible = true;
+
+        // Cerrar el menú si se hace clic fuera de él
+        this.input.once('pointerdown', (pointer) => {
+            const bounds = this.configMenuPanel.getBounds();
+            if (!Phaser.Geom.Rectangle.Contains(bounds, pointer.x, pointer.y)) {
+                this.hideConfigMenu();
+            }
+        });
+    }
+
+    hideConfigMenu() {
+        this.configMenuPanel.setVisible(false);
+        this.logoutButton.setVisible(false);
+        this.settingsButton.setVisible(false);
+        this.configMenuVisible = false;
     }
 
     createExperienceBar() {
         const barWidth = 180;
-        const barHeight = 12;
+        const barHeight = 10;
         const barX = 120;
-        const barY = 45;
+        const barY = 50;
 
         // Fondo de la barra
         this.expBarBg = this.add.rectangle(barX, barY, barWidth, barHeight, 0x333333);

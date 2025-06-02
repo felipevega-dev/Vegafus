@@ -2,6 +2,7 @@
  * Sistema para gestionar la creación y carga del jugador
  */
 import { Player } from '@classes/Player.js';
+import { ItemLibrary } from '@data/ItemLibrary.js';
 
 export class PlayerManager {
     constructor(scene, userData, currentCharacterId) {
@@ -143,6 +144,13 @@ export class PlayerManager {
                 tierraPercent: 0, fuegoPercent: 0, aguaPercent: 0, airePercent: 0
             };
 
+            // Cargar inventario (si existe) o agregar objetos iniciales
+            if (character.inventory && character.inventory.length > 0) {
+                this.player.inventory = character.inventory;
+            } else {
+                this.loadStarterItems(character.class);
+            }
+
             // Guardar ID del personaje para futuras actualizaciones
             this.currentCharacterId = character.id;
 
@@ -180,6 +188,9 @@ export class PlayerManager {
             this.player.attack = character.stats.attack;
             this.player.defense = character.stats.defense;
 
+            // Cargar objetos iniciales para personaje nuevo
+            this.loadStarterItems(character.class);
+
             this.currentCharacterId = character.id;
 
             console.log(`Nuevo personaje creado: Nivel ${this.player.level}, XP: ${this.player.experience}`);
@@ -205,6 +216,8 @@ export class PlayerManager {
             } else {
                 // Crear jugador completamente nuevo
                 this.player = new Player(this.scene, 5, 10, 'mage');
+                // Cargar objetos iniciales para jugador nuevo
+                this.loadStarterItems('mage');
                 console.log('Jugador nuevo creado');
             }
 
@@ -231,5 +244,19 @@ export class PlayerManager {
 
     isComingFromCombat() {
         return this.comingFromCombat;
+    }
+
+    loadStarterItems(playerClass) {
+        try {
+            const starterItems = ItemLibrary.getStarterItems(playerClass);
+
+            starterItems.forEach(item => {
+                this.player.addItem(item);
+            });
+
+            console.log(`✅ Objetos iniciales cargados para ${playerClass}:`, starterItems.map(item => item.name));
+        } catch (error) {
+            console.error('Error cargando objetos iniciales:', error);
+        }
     }
 }

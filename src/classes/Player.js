@@ -59,6 +59,10 @@ export class Player {
         this.spells = this.getSpellsByClass(playerClass);
         this.selectedSpell = null;
 
+        // Sistema de inventario
+        this.inventory = [];
+        this.maxInventorySize = 20;
+
         // Crear sprite del jugador
         this.createSprite();
     }
@@ -390,6 +394,69 @@ export class Player {
 
         // Efecto visual de turno activo
         this.sprite.setTint(0xffff00);
+    }
+
+    // Métodos de inventario
+    addItem(item) {
+        if (this.inventory.length >= this.maxInventorySize) {
+            console.log('Inventario lleno');
+            return false;
+        }
+
+        // Si el item es stackeable, intentar combinarlo con uno existente
+        if (item.stackable) {
+            const existingItem = this.inventory.find(invItem =>
+                invItem.id === item.id && invItem.quantity < invItem.maxStack
+            );
+
+            if (existingItem) {
+                existingItem.quantity = Math.min(existingItem.maxStack, existingItem.quantity + 1);
+                return true;
+            }
+        }
+
+        // Agregar como nuevo item
+        const newItem = item.clone();
+        newItem.quantity = 1;
+        this.inventory.push(newItem);
+        return true;
+    }
+
+    removeItem(itemId, quantity = 1) {
+        const itemIndex = this.inventory.findIndex(item => item.id === itemId);
+        if (itemIndex === -1) return false;
+
+        const item = this.inventory[itemIndex];
+
+        if (item.stackable && item.quantity > quantity) {
+            item.quantity -= quantity;
+        } else {
+            this.inventory.splice(itemIndex, 1);
+        }
+
+        return true;
+    }
+
+    hasItem(itemId, quantity = 1) {
+        const item = this.inventory.find(item => item.id === itemId);
+        return item && (!item.stackable || item.quantity >= quantity);
+    }
+
+    getItemCount(itemId) {
+        const item = this.inventory.find(item => item.id === itemId);
+        return item ? (item.stackable ? item.quantity : 1) : 0;
+    }
+
+    useItem(itemId) {
+        const item = this.inventory.find(item => item.id === itemId);
+        if (!item || item.type !== 'consumable') return false;
+
+        const success = item.use(this);
+        if (success) {
+            this.removeItem(itemId, 1);
+        }
+
+        return success;
     }
 
     // Obtener celdas de movimiento válidas
