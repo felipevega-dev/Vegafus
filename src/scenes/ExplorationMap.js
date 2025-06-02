@@ -7,36 +7,26 @@ export class ExplorationMap extends Phaser.Scene {
     }
 
     preload() {
-        // Crear sprites simples si no existen las imágenes
-        this.load.on('filecomplete', (key) => {
-            console.log('Archivo cargado:', key);
-        });
-
-        this.load.on('loaderror', (file) => {
-            console.log('Error cargando:', file.key);
-            // Crear sprite placeholder
-            this.createPlaceholderSprite(file.key);
-        });
-
-        // Intentar cargar assets básicos
-        this.load.image('character', 'assets/images/character.png');
-        this.load.image('enemy', 'assets/images/enemy.png');
+        // Crear sprites placeholder directamente
+        this.createPlaceholderSprites();
     }
 
-    createPlaceholderSprite(key) {
-        // Crear un sprite simple usando gráficos de Phaser
-        const graphics = this.add.graphics();
+    createPlaceholderSprites() {
+        // Crear sprite para el jugador
+        const playerGraphics = this.add.graphics();
+        playerGraphics.fillStyle(0x00ff00); // Verde para el jugador
+        playerGraphics.fillCircle(16, 16, 12);
+        playerGraphics.generateTexture('character', 32, 32);
+        playerGraphics.destroy();
 
-        if (key === 'character') {
-            graphics.fillStyle(0x00ff00); // Verde para el jugador
-            graphics.fillCircle(16, 16, 12);
-        } else if (key === 'enemy') {
-            graphics.fillStyle(0xff0000); // Rojo para enemigos
-            graphics.fillCircle(16, 16, 12);
-        }
+        // Crear sprite para enemigos
+        const enemyGraphics = this.add.graphics();
+        enemyGraphics.fillStyle(0xff0000); // Rojo para enemigos
+        enemyGraphics.fillCircle(16, 16, 12);
+        enemyGraphics.generateTexture('enemy', 32, 32);
+        enemyGraphics.destroy();
 
-        graphics.generateTexture(key, 32, 32);
-        graphics.destroy();
+        console.log('✅ Sprites placeholder creados');
     }
 
     async create(data) {
@@ -161,34 +151,49 @@ export class ExplorationMap extends Phaser.Scene {
     }
 
     async createPlayer() {
-        // Si hay usuario autenticado, intentar cargar su personaje del backend
-        if (this.userData) {
-            try {
-                await this.loadPlayerFromBackend();
-            } catch (error) {
-                console.error('Error cargando personaje del backend:', error);
-                // Si falla, crear personaje por defecto
+        try {
+            // Si hay usuario autenticado, intentar cargar su personaje del backend
+            if (this.userData) {
+                try {
+                    await this.loadPlayerFromBackend();
+                } catch (error) {
+                    console.error('Error cargando personaje del backend:', error);
+                    // Si falla, crear personaje por defecto
+                    this.createDefaultPlayer();
+                }
+            } else {
+                // Sin usuario autenticado, usar datos locales
                 this.createDefaultPlayer();
             }
-        } else {
-            // Sin usuario autenticado, usar datos locales
-            this.createDefaultPlayer();
-        }
 
-        // En exploración no hay límite de movimiento
-        this.player.maxMovementPoints = 999;
-        this.player.currentMovementPoints = 999;
+            // Verificar que el jugador se creó correctamente
+            if (!this.player) {
+                throw new Error('No se pudo crear el jugador');
+            }
 
-        // Actualizar UI después de crear el jugador
-        this.updatePlayerUI();
+            // En exploración no hay límite de movimiento
+            this.player.maxMovementPoints = 999;
+            this.player.currentMovementPoints = 999;
 
-        // Si viene del combate (hay datos guardados), guardar progreso actualizado
-        const savedPlayerData = this.registry.get('playerData');
-        if (savedPlayerData && this.currentCharacterId) {
-            // Esperar un poco para que se complete la carga, luego guardar
-            this.time.delayedCall(1000, () => {
-                this.saveProgressToBackend();
-            });
+            // Actualizar UI después de crear el jugador
+            this.updatePlayerUI();
+
+            // Si viene del combate (hay datos guardados), guardar progreso actualizado
+            const savedPlayerData = this.registry.get('playerData');
+            if (savedPlayerData && this.currentCharacterId) {
+                // Esperar un poco para que se complete la carga, luego guardar
+                this.time.delayedCall(1000, () => {
+                    this.saveProgressToBackend();
+                });
+            }
+
+            console.log('✅ Jugador creado exitosamente:', this.player.gridX, this.player.gridY);
+        } catch (error) {
+            console.error('❌ Error crítico creando jugador:', error);
+            // Crear jugador de emergencia
+            this.player = new Player(this, 5, 10, 'mage');
+            this.player.maxMovementPoints = 999;
+            this.player.currentMovementPoints = 999;
         }
     }
 
@@ -260,21 +265,34 @@ export class ExplorationMap extends Phaser.Scene {
     }
 
     createDefaultPlayer() {
-        // Verificar si hay datos guardados localmente
-        const savedPlayerData = this.registry.get('playerData');
+        try {
+            // Verificar si hay datos guardados localmente
+            const savedPlayerData = this.registry.get('playerData');
 
-        if (savedPlayerData) {
-            // Restaurar jugador con datos guardados localmente
-            this.player = new Player(this, savedPlayerData.gridX || 5, savedPlayerData.gridY || 10, savedPlayerData.playerClass || 'mage');
-            this.player.currentHP = savedPlayerData.currentHP || this.player.maxHP;
-            this.player.level = savedPlayerData.level || 1;
-            this.player.experience = savedPlayerData.experience || 0;
+            if (savedPlayerData) {
+                // Restaurar jugador con datos guardados localmente
+                this.player = new Player(this, savedPlayerData.gridX || 5, savedPlayerData.gridY || 10, savedPlayerData.playerClass || 'mage');
+                this.player.currentHP = savedPlayerData.currentHP || this.player.maxHP;
+                this.player.level = savedPlayerData.level || 1;
+                this.player.experience = savedPlayerData.experience || 0;
 
-            console.log(`Jugador restaurado localmente: Nivel ${this.player.level}, XP: ${this.player.experience}`);
-        } else {
-            // Crear jugador completamente nuevo
+                console.log(`Jugador restaurado localmente: Nivel ${this.player.level}, XP: ${this.player.experience}`);
+            } else {
+                // Crear jugador completamente nuevo
+                this.player = new Player(this, 5, 10, 'mage');
+                console.log('Jugador nuevo creado');
+            }
+
+            // Verificar que el jugador se creó correctamente
+            if (!this.player) {
+                throw new Error('No se pudo crear el jugador');
+            }
+
+            console.log(`Jugador creado en posición: ${this.player.gridX}, ${this.player.gridY}`);
+        } catch (error) {
+            console.error('Error creando jugador por defecto:', error);
+            // Crear jugador básico como último recurso
             this.player = new Player(this, 5, 10, 'mage');
-            console.log('Jugador nuevo creado');
         }
     }
 
