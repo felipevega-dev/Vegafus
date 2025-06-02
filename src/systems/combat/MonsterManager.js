@@ -145,8 +145,8 @@ export class MonsterManager {
             defense: this.player.defense
         });
 
-        // Cambiar a escena de combate
-        this.scene.scene.start('IsometricMap');
+        // Cambiar a escena de combate refactorizada
+        this.scene.scene.start('IsometricMapRefactored');
     }
 
     clearExistingMonsters() {
