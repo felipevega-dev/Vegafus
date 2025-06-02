@@ -35,10 +35,6 @@ const characterSchema = new mongoose.Schema({
             current: { type: Number, default: 100 },
             max: { type: Number, default: 100 }
         },
-        mp: {
-            current: { type: Number, default: 50 },
-            max: { type: Number, default: 50 }
-        },
         movementPoints: { type: Number, default: 3 },
         actionPoints: { type: Number, default: 6 }
     },

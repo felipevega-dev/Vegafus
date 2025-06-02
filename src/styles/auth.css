@@ -1,0 +1,114 @@
+/* Estilos para los inputs de autenticación */
+.auth-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(26, 26, 46, 0.95);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.auth-container {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    padding: 40px;
+    border-radius: 15px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    border: 2px solid #444;
+    min-width: 400px;
+    text-align: center;
+}
+
+.auth-title {
+    color: #ffffff;
+    font-size: 32px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.auth-subtitle {
+    color: #ffffff;
+    font-size: 24px;
+    margin-bottom: 30px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.auth-input {
+    padding: 12px 15px;
+    border: 2px solid #555;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.auth-input:focus {
+    outline: none;
+    border-color: #4CAF50;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+}
+
+.auth-input::placeholder {
+    color: #aaa;
+}
+
+.auth-button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+}
+
+.auth-button.primary {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white;
+}
+
+.auth-button.primary:hover {
+    background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+}
+
+.auth-button.secondary {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    color: white;
+    margin-top: 10px;
+}
+
+.auth-button.secondary:hover {
+    background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+}
+
+.auth-error {
+    color: #ff4444;
+    font-size: 14px;
+    margin-top: 10px;
+    min-height: 20px;
+}
+
+.auth-loading {
+    color: #4CAF50;
+    font-size: 14px;
+    margin-top: 10px;
+}
