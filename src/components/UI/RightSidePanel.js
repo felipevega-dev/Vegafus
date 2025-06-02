@@ -390,10 +390,6 @@ export class RightSidePanel {
         this.spellsModalPoints.setDepth(depths.MODAL_ELEMENTS + 1);
 
         // Crear hechizos con iconos y mejor diseño
-        console.log('🔮 Player:', this.player);
-        console.log('🔮 Player.spells:', this.player.spells);
-        console.log('🔮 Player.getSpellsInfo:', this.player.getSpellsInfo);
-
         const spells = this.player.getSpellsInfo ? this.player.getSpellsInfo() : [];
         console.log('🔮 Spells obtenidos:', spells.length, spells);
 
@@ -920,12 +916,20 @@ export class RightSidePanel {
         try {
             console.log('💾 Guardando cambios de hechizos...');
 
-            // Obtener datos del usuario
-            const userData = this.scene.registry.get('userData');
-            const currentCharacterId = this.scene.registry.get('currentCharacterId');
+            // Debug: verificar qué hay en el registry
+            console.log('🔍 Registry userData:', this.scene.registry.get('userData'));
+            console.log('🔍 Registry currentCharacterId:', this.scene.registry.get('currentCharacterId'));
+            console.log('🔍 Scene userData:', this.scene.userData);
+            console.log('🔍 Scene currentCharacterId:', this.scene.currentCharacterId);
+
+            // Obtener datos del usuario (intentar múltiples fuentes)
+            const userData = this.scene.registry.get('userData') || this.scene.userData;
+            const currentCharacterId = this.scene.registry.get('currentCharacterId') || this.scene.currentCharacterId;
 
             if (!userData || !currentCharacterId) {
                 console.error('❌ No hay datos de usuario o ID de personaje');
+                console.error('userData:', userData);
+                console.error('currentCharacterId:', currentCharacterId);
                 return;
             }
 

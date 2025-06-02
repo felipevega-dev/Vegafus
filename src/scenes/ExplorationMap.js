@@ -303,6 +303,10 @@ export class ExplorationMap extends Phaser.Scene {
             // Guardar ID del personaje para futuras actualizaciones
             this.currentCharacterId = character.id;
 
+            // Guardar datos en el registry para que estén disponibles en otros componentes
+            this.registry.set('userData', this.userData);
+            this.registry.set('currentCharacterId', this.currentCharacterId);
+
             console.log(`✅ Personaje sincronizado: ${character.name} - Nivel ${this.player.level}, XP: ${this.player.experience}/${this.player.level * 200}`);
             console.log(`💰 Puntos de capital: ${this.player.capitalPoints}`);
 
@@ -340,6 +344,10 @@ export class ExplorationMap extends Phaser.Scene {
             this.player.defense = character.stats.defense;
 
             this.currentCharacterId = character.id;
+
+            // Guardar datos en el registry para que estén disponibles en otros componentes
+            this.registry.set('userData', this.userData);
+            this.registry.set('currentCharacterId', this.currentCharacterId);
 
             console.log(`Nuevo personaje creado: Nivel ${this.player.level}, XP: ${this.player.experience}`);
         } catch (error) {
