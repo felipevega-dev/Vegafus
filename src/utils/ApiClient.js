@@ -129,9 +129,9 @@ export class ApiClient {
      * Guardar progreso del juego
      */
     async saveProgress(characterId, gameData) {
-        return await this.request('/game/save-progress', {
-            method: 'POST',
-            body: JSON.stringify({ characterId, gameData })
+        return await this.request(`/characters/${characterId}`, {
+            method: 'PUT',
+            body: JSON.stringify(gameData)
         });
     }
 

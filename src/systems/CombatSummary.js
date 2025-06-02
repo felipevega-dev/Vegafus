@@ -208,10 +208,80 @@ export class CombatSummary {
         });
     }
 
-    returnToExploration() {
+    async returnToExploration() {
         console.log('Volviendo al mapa de exploración...');
 
-        // Guardar estado actualizado del jugador
+        // Crear mensaje de guardado
+        const saveMessage = this.scene.add.text(640, 360, 'Guardando progreso...', {
+            fontSize: '24px',
+            fontFamily: 'Arial',
+            color: '#00ff00',
+            backgroundColor: '#000000',
+            padding: { x: 20, y: 10 }
+        });
+        saveMessage.setOrigin(0.5);
+        saveMessage.setDepth(3000);
+
+        try {
+            // Guardar progreso en el backend
+            await this.saveProgressToBackend();
+
+            // Actualizar mensaje
+            saveMessage.setText('✅ Progreso guardado');
+
+            console.log(`✅ Progreso guardado en backend: Nivel ${this.player.level}, XP: ${this.player.experience}`);
+        } catch (error) {
+            console.error('❌ Error guardando progreso:', error);
+            saveMessage.setText('⚠️ Error guardando (usando datos locales)');
+
+            // Fallback: guardar localmente
+            this.saveProgressLocally();
+        }
+
+        // Después de 1.5 segundos, cambiar a la escena de exploración
+        this.scene.time.delayedCall(1500, () => {
+            // Pasar datos del usuario para mantener la sesión
+            const userData = this.scene.registry.get('userData');
+            this.scene.scene.start('ExplorationMap', { user: userData });
+        });
+    }
+
+    async saveProgressToBackend() {
+        const userData = this.scene.registry.get('userData');
+        const characterId = this.scene.registry.get('currentCharacterId');
+
+        if (!userData || !characterId) {
+            throw new Error('No hay datos de usuario o personaje');
+        }
+
+        // Importar API client dinámicamente
+        const { apiClient } = await import('../utils/ApiClient.js');
+
+        const gameData = {
+            level: this.player.level,
+            experience: this.player.experience,
+            stats: {
+                hp: {
+                    current: this.player.currentHP,
+                    max: this.player.maxHP
+                },
+                attack: this.player.attack,
+                defense: this.player.defense
+            },
+            position: {
+                x: this.player.gridX,
+                y: this.player.gridY
+            },
+            // Marcar que viene de combate para indicar ganancia de experiencia
+            combatResult: 'victory',
+            enemiesDefeated: this.defeatedEnemies.length
+        };
+
+        await apiClient.saveProgress(characterId, gameData);
+    }
+
+    saveProgressLocally() {
+        // Fallback: guardar estado actualizado del jugador localmente
         this.scene.registry.set('playerData', {
             gridX: this.player.gridX,
             gridY: this.player.gridY,
@@ -222,26 +292,6 @@ export class CombatSummary {
             playerClass: this.player.playerClass,
             attack: this.player.attack,
             defense: this.player.defense
-        });
-
-        console.log(`Datos actualizados guardados: Nivel ${this.player.level}, XP: ${this.player.experience}`);
-
-        // Crear un mensaje temporal
-        const returnMessage = this.scene.add.text(640, 360, 'Volviendo al mapa de exploración...', {
-            fontSize: '24px',
-            fontFamily: 'Arial',
-            color: '#ffffff',
-            backgroundColor: '#000000',
-            padding: { x: 20, y: 10 }
-        });
-        returnMessage.setOrigin(0.5);
-        returnMessage.setDepth(3000);
-
-        // Después de 1 segundo, cambiar a la escena de exploración
-        this.scene.time.delayedCall(1000, () => {
-            // Pasar datos del usuario para mantener la sesión
-            const userData = this.scene.registry.get('userData');
-            this.scene.scene.start('ExplorationMap', { user: userData });
         });
     }
 

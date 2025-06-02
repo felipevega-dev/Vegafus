@@ -41,6 +41,9 @@ export class ExplorationMap extends Phaser.Scene {
         // Recuperar ID del personaje si viene del combate
         this.currentCharacterId = this.registry.get('currentCharacterId') || null;
 
+        // Verificar si viene del combate (para recargar datos del backend)
+        this.comingFromCombat = this.registry.get('playerData') !== null;
+
         // Crear grid más grande para exploración
         this.grid = new Grid(this, 30, 20); // 30x20 para exploración
 
@@ -152,10 +155,16 @@ export class ExplorationMap extends Phaser.Scene {
 
     async createPlayer() {
         try {
-            // Si hay usuario autenticado, intentar cargar su personaje del backend
+            // Si hay usuario autenticado, SIEMPRE cargar del backend (especialmente si viene del combate)
             if (this.userData) {
                 try {
                     await this.loadPlayerFromBackend();
+
+                    // Si viene del combate, limpiar datos locales ya que ahora tenemos los actualizados
+                    if (this.comingFromCombat) {
+                        this.registry.remove('playerData');
+                        console.log('🔄 Datos del combate limpiados, usando datos frescos del backend');
+                    }
                 } catch (error) {
                     console.error('Error cargando personaje del backend:', error);
                     // Si falla, crear personaje por defecto
@@ -178,14 +187,7 @@ export class ExplorationMap extends Phaser.Scene {
             // Actualizar UI después de crear el jugador
             this.updatePlayerUI();
 
-            // Si viene del combate (hay datos guardados), guardar progreso actualizado
-            const savedPlayerData = this.registry.get('playerData');
-            if (savedPlayerData && this.currentCharacterId) {
-                // Esperar un poco para que se complete la carga, luego guardar
-                this.time.delayedCall(1000, () => {
-                    this.saveProgressToBackend();
-                });
-            }
+            // Los datos ya están sincronizados desde el backend, no necesitamos guardar aquí
 
             console.log('✅ Jugador creado exitosamente:', this.player.gridX, this.player.gridY);
         } catch (error) {
@@ -201,14 +203,18 @@ export class ExplorationMap extends Phaser.Scene {
         const { apiClient } = await import('../utils/ApiClient.js');
 
         // Obtener personajes del usuario
+        console.log('🔍 Buscando personajes en el backend...');
         const response = await apiClient.getCharacters();
         const characters = response.characters;
+
+        console.log('📋 Respuesta del backend:', response);
+        console.log('👥 Personajes encontrados:', characters?.length || 0);
 
         if (characters && characters.length > 0) {
             // Por ahora, usar el primer personaje (más tarde podemos hacer selección)
             const character = characters[0];
 
-            console.log('Personaje cargado del backend:', character);
+            console.log('📥 Personaje cargado del backend:', character);
 
             // Crear jugador con datos del backend
             this.player = new Player(
@@ -229,7 +235,12 @@ export class ExplorationMap extends Phaser.Scene {
             // Guardar ID del personaje para futuras actualizaciones
             this.currentCharacterId = character.id;
 
-            console.log(`Personaje cargado: ${character.name} - Nivel ${this.player.level}, XP: ${this.player.experience}`);
+            console.log(`✅ Personaje sincronizado: ${character.name} - Nivel ${this.player.level}, XP: ${this.player.experience}/${this.player.level * 200}`);
+
+            // Mostrar mensaje temporal si viene del combate
+            if (this.comingFromCombat) {
+                this.showSyncMessage();
+            }
         } else {
             // No tiene personajes, crear uno nuevo
             await this.createNewCharacterInBackend();
@@ -241,10 +252,11 @@ export class ExplorationMap extends Phaser.Scene {
 
         try {
             // Crear personaje por defecto
+            console.log('🆕 Creando nuevo personaje en el backend...');
             const response = await apiClient.createCharacter('Aventurero', 'mage');
             const character = response.character;
 
-            console.log('Nuevo personaje creado:', character);
+            console.log('✅ Nuevo personaje creado en backend:', character);
 
             // Crear jugador con datos del nuevo personaje
             this.player = new Player(this, 5, 10, character.class);
@@ -714,6 +726,24 @@ export class ExplorationMap extends Phaser.Scene {
                 this.saveProgressToBackend();
             },
             loop: true
+        });
+    }
+
+    showSyncMessage() {
+        // Mostrar mensaje de sincronización
+        const syncMessage = this.add.text(640, 100, '🔄 Datos sincronizados desde el servidor', {
+            fontSize: '18px',
+            fontFamily: 'Arial',
+            color: '#00ff00',
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            padding: { x: 15, y: 8 }
+        });
+        syncMessage.setOrigin(0.5);
+        syncMessage.setDepth(2000);
+
+        // Hacer que desaparezca después de 3 segundos
+        this.time.delayedCall(3000, () => {
+            syncMessage.destroy();
         });
     }
 
