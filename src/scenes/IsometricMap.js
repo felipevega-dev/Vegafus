@@ -157,8 +157,24 @@ export class IsometricMap extends Phaser.Scene {
     }
 
     createPlayer() {
-        // Crear jugador en posición inicial temporal (se moverá durante posicionamiento)
-        this.player = new Player(this, 5, 5, 'mage'); // Posición temporal en el centro
+        // Verificar si hay datos guardados del jugador
+        const savedPlayerData = this.registry.get('playerData');
+
+        if (savedPlayerData) {
+            // Restaurar jugador con datos guardados
+            this.player = new Player(this, 5, 5, savedPlayerData.playerClass || 'mage');
+            this.player.currentHP = savedPlayerData.currentHP || this.player.maxHP;
+            this.player.maxHP = savedPlayerData.maxHP || this.player.maxHP;
+            this.player.level = savedPlayerData.level || 1;
+            this.player.experience = savedPlayerData.experience || 0;
+            this.player.attack = savedPlayerData.attack || this.player.attack;
+            this.player.defense = savedPlayerData.defense || this.player.defense;
+
+            console.log(`Jugador restaurado en combate: Nivel ${this.player.level}, XP: ${this.player.experience}`);
+        } else {
+            // Crear jugador nuevo
+            this.player = new Player(this, 5, 5, 'mage');
+        }
     }
 
     createEnemies() {

@@ -211,6 +211,21 @@ export class CombatSummary {
     returnToExploration() {
         console.log('Volviendo al mapa de exploración...');
 
+        // Guardar estado actualizado del jugador
+        this.scene.registry.set('playerData', {
+            gridX: this.player.gridX,
+            gridY: this.player.gridY,
+            currentHP: this.player.currentHP,
+            maxHP: this.player.maxHP,
+            level: this.player.level,
+            experience: this.player.experience,
+            playerClass: this.player.playerClass,
+            attack: this.player.attack,
+            defense: this.player.defense
+        });
+
+        console.log(`Datos actualizados guardados: Nivel ${this.player.level}, XP: ${this.player.experience}`);
+
         // Crear un mensaje temporal
         const returnMessage = this.scene.add.text(640, 360, 'Volviendo al mapa de exploración...', {
             fontSize: '24px',

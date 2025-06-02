@@ -23,19 +23,21 @@ export class ExplorationMap extends Phaser.Scene {
         this.movementIndicators = [];
         this.monsters = [];
         this.interactionMode = false; // Para mostrar opciones de interacción
+        this.isMoving = false; // Para controlar animaciones de movimiento
         
         // Crear el mapa de exploración
         this.createExplorationMap();
         
         // Crear jugador
         this.createPlayer();
-        
-        // Generar monstruos aleatorios
+
+        // Limpiar monstruos existentes y generar nuevos
+        this.clearExistingMonsters();
         this.spawnRandomMonsters();
-        
+
         // Configurar controles
         this.setupControls();
-        
+
         // Crear UI
         this.createUI();
     }
@@ -113,12 +115,55 @@ export class ExplorationMap extends Phaser.Scene {
     }
 
     createPlayer() {
-        // Crear jugador en posición inicial
-        this.player = new Player(this, 5, 10, 'mage');
-        
-        // Ajustar puntos para exploración (más movimiento)
-        this.player.maxMovementPoints = 10;
-        this.player.currentMovementPoints = 10;
+        // Verificar si hay datos guardados del jugador
+        const savedPlayerData = this.registry.get('playerData');
+
+        if (savedPlayerData) {
+            // Restaurar jugador con datos guardados
+            this.player = new Player(this, savedPlayerData.gridX || 5, savedPlayerData.gridY || 10, savedPlayerData.playerClass || 'mage');
+            this.player.currentHP = savedPlayerData.currentHP || this.player.maxHP;
+            this.player.level = savedPlayerData.level || 1;
+            this.player.experience = savedPlayerData.experience || 0;
+
+            console.log(`Jugador restaurado: Nivel ${this.player.level}, XP: ${this.player.experience}`);
+        } else {
+            // Crear jugador nuevo
+            this.player = new Player(this, 5, 10, 'mage');
+        }
+
+        // En exploración no hay límite de movimiento
+        this.player.maxMovementPoints = 999;
+        this.player.currentMovementPoints = 999;
+
+        // No actualizar UI aquí, se hará en create()
+    }
+
+    clearExistingMonsters() {
+        // Limpiar monstruos existentes
+        if (this.monsters) {
+            this.monsters.forEach(monster => {
+                if (monster.sprite && monster.sprite.destroy) {
+                    monster.sprite.destroy();
+                }
+                // Liberar celda ocupada
+                if (monster.gridX !== undefined && monster.gridY !== undefined) {
+                    this.grid.setFree(monster.gridX, monster.gridY);
+                }
+            });
+        }
+        this.monsters = [];
+    }
+
+    updatePlayerUI() {
+        // Actualizar información del jugador solo si existe
+        if (this.playerInfo && this.playerInfo.setText) {
+            this.playerInfo.setText(`HP: ${this.player.currentHP}/${this.player.maxHP} | Nivel: ${this.player.level}`);
+        }
+
+        // Actualizar barra de experiencia
+        if (this.expBar && this.updateExperienceBar) {
+            this.updateExperienceBar();
+        }
     }
 
     spawnRandomMonsters() {
@@ -241,17 +286,22 @@ export class ExplorationMap extends Phaser.Scene {
 
     startCombat(monsterType) {
         console.log(`Iniciando combate contra: ${monsterType}`);
-        
-        // Guardar estado del jugador
+
+        // Guardar estado completo del jugador
         this.registry.set('playerData', {
             gridX: this.player.gridX,
             gridY: this.player.gridY,
             currentHP: this.player.currentHP,
+            maxHP: this.player.maxHP,
             level: this.player.level,
             experience: this.player.experience,
-            playerClass: this.player.playerClass
+            playerClass: this.player.playerClass,
+            attack: this.player.attack,
+            defense: this.player.defense
         });
-        
+
+        console.log(`Datos guardados: Nivel ${this.player.level}, XP: ${this.player.experience}`);
+
         // Cambiar a escena de combate
         this.scene.start('IsometricMap');
     }
@@ -273,25 +323,64 @@ export class ExplorationMap extends Phaser.Scene {
 
     handleMouseClick(pointer) {
         const gridPos = this.grid.worldToGrid(pointer.worldX, pointer.worldY);
-        
+
         if (gridPos.x < 0 || gridPos.y < 0 || gridPos.x >= this.grid.width || gridPos.y >= this.grid.height) {
             return;
         }
-        
-        // Mover jugador
-        if (this.player.moveTo(gridPos.x, gridPos.y)) {
-            console.log(`Jugador movido a: ${gridPos.x}, ${gridPos.y}`);
+
+        // En exploración, mover con animación suave
+        if (this.grid.isWalkable(gridPos.x, gridPos.y) && !this.grid.cells[gridPos.y][gridPos.x].occupied) {
+            this.movePlayerWithAnimation(gridPos.x, gridPos.y);
         }
     }
 
+    movePlayerWithAnimation(targetX, targetY) {
+        // Evitar múltiples movimientos simultáneos
+        if (this.isMoving) return;
+
+        this.isMoving = true;
+
+        // Liberar celda anterior
+        this.grid.setFree(this.player.gridX, this.player.gridY);
+
+        // Calcular posición mundial del objetivo
+        const targetWorldPos = this.grid.gridToWorld(targetX, targetY);
+
+        // Animar el movimiento
+        this.tweens.add({
+            targets: this.player.sprite,
+            x: targetWorldPos.x,
+            y: targetWorldPos.y,
+            duration: 300, // 300ms de animación
+            ease: 'Power2',
+            onComplete: () => {
+                // Actualizar posición lógica después de la animación
+                this.player.gridX = targetX;
+                this.player.gridY = targetY;
+
+                // Ocupar nueva celda
+                this.grid.setOccupied(this.player.gridX, this.player.gridY, this.player);
+
+                // Actualizar barra de vida
+                this.player.updateHealthBarPosition();
+
+                // Permitir nuevo movimiento
+                this.isMoving = false;
+
+                console.log(`Jugador movido a: ${targetX}, ${targetY}`);
+            }
+        });
+    }
+
     createUI() {
-        // Panel de información del jugador
-        const playerPanel = this.add.rectangle(100, 30, 180, 50, 0x000000, 0.8);
+        // Panel de información del jugador (más grande)
+        const playerPanel = this.add.rectangle(120, 40, 220, 70, 0x000000, 0.8);
         playerPanel.setDepth(1000);
-        
-        // Información del jugador
-        this.playerInfo = this.add.text(100, 30, 
-            `HP: ${this.player.currentHP}/${this.player.maxHP}\nNivel: ${this.player.level} | XP: ${this.player.experience}`, {
+        playerPanel.setStrokeStyle(2, 0x444444);
+
+        // Información básica del jugador
+        this.playerInfo = this.add.text(120, 20,
+            `HP: ${this.player.currentHP}/${this.player.maxHP} | Nivel: ${this.player.level}`, {
             fontSize: '12px',
             fontFamily: 'Arial',
             color: '#ffffff',
@@ -299,7 +388,10 @@ export class ExplorationMap extends Phaser.Scene {
         });
         this.playerInfo.setOrigin(0.5);
         this.playerInfo.setDepth(1001);
-        
+
+        // Barra de experiencia
+        this.createExperienceBar();
+
         // Instrucciones
         this.add.text(400, 30, 'Click en monstruos para interactuar | ESC para cancelar', {
             fontSize: '12px',
@@ -308,31 +400,83 @@ export class ExplorationMap extends Phaser.Scene {
         }).setDepth(1001);
     }
 
+    createExperienceBar() {
+        const barWidth = 180;
+        const barHeight = 12;
+        const barX = 120;
+        const barY = 45;
+
+        // Fondo de la barra
+        this.expBarBg = this.add.rectangle(barX, barY, barWidth, barHeight, 0x333333);
+        this.expBarBg.setDepth(1001);
+        this.expBarBg.setStrokeStyle(1, 0x666666);
+
+        // Barra de experiencia
+        this.expBar = this.add.rectangle(barX, barY, 0, barHeight, 0x00ff00);
+        this.expBar.setDepth(1002);
+        this.expBar.setOrigin(0.5, 0.5);
+
+        // Texto de experiencia
+        this.expText = this.add.text(barX, barY + 20, '', {
+            fontSize: '10px',
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            align: 'center'
+        });
+        this.expText.setOrigin(0.5);
+        this.expText.setDepth(1001);
+
+        // Actualizar la barra
+        this.updateExperienceBar();
+    }
+
+    updateExperienceBar() {
+        const currentLevel = this.player.level;
+        const currentExp = this.player.experience;
+
+        // Calcular experiencia para el nivel actual y siguiente
+        const expForCurrentLevel = (currentLevel - 1) * 200;
+        const expForNextLevel = currentLevel * 200;
+        const expInCurrentLevel = currentExp - expForCurrentLevel;
+        const expNeededForLevel = expForNextLevel - expForCurrentLevel;
+
+        // Calcular porcentaje
+        const percentage = Math.max(0, Math.min(1, expInCurrentLevel / expNeededForLevel));
+
+        // Actualizar barra visual
+        const barWidth = 180;
+        this.expBar.width = barWidth * percentage;
+
+        // Actualizar texto
+        this.expText.setText(`XP: ${expInCurrentLevel}/${expNeededForLevel} (Total: ${currentExp})`);
+
+        console.log(`Barra XP actualizada: ${expInCurrentLevel}/${expNeededForLevel} (${Math.round(percentage * 100)}%)`);
+    }
+
     // Métodos de preview (simplificados del combate)
     showMovementPreview(targetX, targetY) {
         this.clearMovementPreview();
-        
+
+        // En exploración, solo mostrar si la celda es alcanzable
         const path = this.grid.findPath(
             this.player.gridX, this.player.gridY,
             targetX, targetY,
-            this.player.currentMovementPoints
+            999 // Sin límite de movimiento en exploración
         );
-        
+
         if (!path || path.length === 0) return;
-        
-        // Mostrar camino simplificado
-        for (let i = 1; i < path.length; i++) {
-            const worldPos = this.grid.gridToWorld(path[i].x, path[i].y);
-            
-            const previewCell = this.add.rectangle(
-                worldPos.x, worldPos.y,
-                this.grid.tileSize - 4, this.grid.tileSize - 4,
-                0xffff00, 0.4
-            );
-            previewCell.setDepth(50);
-            
-            this.movementIndicators.push(previewCell);
-        }
+
+        // Mostrar solo la celda objetivo
+        const worldPos = this.grid.gridToWorld(targetX, targetY);
+
+        const previewCell = this.add.rectangle(
+            worldPos.x, worldPos.y,
+            this.grid.tileSize - 4, this.grid.tileSize - 4,
+            0x00ff00, 0.6 // Verde para indicar movimiento libre
+        );
+        previewCell.setDepth(50);
+
+        this.movementIndicators.push(previewCell);
     }
 
     clearMovementPreview() {
