@@ -59,7 +59,13 @@ export class Player {
         this.isPlayerTurn = false;
 
         // Sistema de hechizos
-        this.spells = this.getSpellsByClass(playerClass);
+        // Solo cargar hechizos por defecto si no se han cargado desde el backend
+        if (!this.spells || this.spells.length === 0) {
+            this.spells = this.getSpellsByClass(playerClass);
+            console.log('🔮 Hechizos cargados por defecto:', this.spells.length);
+        } else {
+            console.log('🔮 Hechizos ya cargados desde backend:', this.spells.length);
+        }
         this.selectedSpell = null;
 
         // Sistema de inventario

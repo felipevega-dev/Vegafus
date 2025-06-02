@@ -306,6 +306,11 @@ export class RightSidePanel {
         console.log('🔮 Abriendo modal de hechizos...');
         // Asegurarse de que no hay elementos previos
         this.hideSpellsModal();
+
+        // Inicializar arrays
+        this.spellsModalElements = [];
+        this.spellListElements = [];
+
         this.createSpellsModal();
     }
 
@@ -385,6 +390,10 @@ export class RightSidePanel {
         this.spellsModalPoints.setDepth(depths.MODAL_ELEMENTS + 1);
 
         // Crear hechizos con iconos y mejor diseño
+        console.log('🔮 Player:', this.player);
+        console.log('🔮 Player.spells:', this.player.spells);
+        console.log('🔮 Player.getSpellsInfo:', this.player.getSpellsInfo);
+
         const spells = this.player.getSpellsInfo ? this.player.getSpellsInfo() : [];
         console.log('🔮 Spells obtenidos:', spells.length, spells);
 
@@ -425,10 +434,9 @@ export class RightSidePanel {
             this.closeSpellsButton.setColor(colors.TEXT_SECONDARY);
         });
 
-        // Inicializar array si no existe
-        if (!this.spellsModalElements) {
-            this.spellsModalElements = [];
-        }
+        // Asegurar que los arrays estén inicializados
+        this.spellsModalElements = this.spellsModalElements || [];
+        this.spellListElements = this.spellListElements || [];
 
         // Guardar referencias de elementos base
         this.spellsModalElements.push(
@@ -539,9 +547,8 @@ export class RightSidePanel {
             spellDesc.setOrigin(0, 0.5);
             spellDesc.setDepth(depths.MODAL_ELEMENTS + 2);
 
-            // Guardar elementos para limpiar después
-            if (!this.spellsModalElements) this.spellsModalElements = [];
-            this.spellsModalElements.push(spellBg, iconBg, iconText, spellName, spellInfo, spellDesc);
+            // Guardar elementos de hechizos en array separado
+            this.spellListElements.push(spellBg, iconBg, iconText, spellName, spellInfo, spellDesc);
 
             // Botones de nivel (+ y -)
             this.createSpellLevelButtons(spell, y, colors, depths);
@@ -619,6 +626,7 @@ export class RightSidePanel {
                 const result = this.player.upgradeSpell(spell.index);
                 console.log('🔮 Resultado upgrade:', result);
                 if (result.success) {
+                    this.saveSpellChanges(); // Guardar en backend
                     this.refreshSpellsModal();
                 }
             });
@@ -630,19 +638,47 @@ export class RightSidePanel {
             });
         }
 
-        // Agregar botones a la lista de elementos
-        this.spellsModalElements.push(minusButton, levelIndicator, plusButton);
+        // Agregar botones a la lista de elementos de hechizos
+        this.spellListElements.push(minusButton, levelIndicator, plusButton);
     }
 
     refreshSpellsModal() {
         console.log('🔮 Refrescando modal de hechizos...');
-        // Cerrar y reabrir el modal para actualizar la información
-        this.hideSpellsModal();
-        // Pequeño delay para evitar conflictos
-        this.scene.time.delayedCall(100, () => {
-            console.log('🔮 Reabriendo modal...');
-            this.showSpellsModal();
-        });
+
+        // Solo actualizar el contenido sin cerrar el modal
+        if (this.spellsModalElements) {
+            // Actualizar puntos de hechizo
+            if (this.spellsModalPoints) {
+                this.spellsModalPoints.setText(`Puntos de hechizo disponibles: ${this.player.spellPoints}`);
+                this.spellsModalPoints.setColor(
+                    this.player.spellPoints > 0 ?
+                    LayoutConfig.COLORS.TEXT_ACCENT :
+                    LayoutConfig.COLORS.TEXT_SECONDARY
+                );
+            }
+
+            // Recrear solo la lista de hechizos
+            this.updateSpellsList();
+        }
+    }
+
+    updateSpellsList() {
+        const colors = LayoutConfig.COLORS;
+        const depths = LayoutConfig.DEPTHS;
+
+        // Remover solo los elementos de hechizos (no el modal base)
+        if (this.spellListElements) {
+            this.spellListElements.forEach(element => {
+                if (element && element.destroy) {
+                    element.destroy();
+                }
+            });
+        }
+        this.spellListElements = [];
+
+        // Recrear lista de hechizos
+        const spells = this.player.getSpellsInfo ? this.player.getSpellsInfo() : [];
+        this.createSpellsList(spells, colors, depths);
     }
 
     getElementColor(element) {
@@ -699,9 +735,9 @@ export class RightSidePanel {
             }
         });
 
-        // Destruir array de elementos
+        // Destruir array de elementos del modal
         if (this.spellsModalElements) {
-            console.log('🔮 Destruyendo', this.spellsModalElements.length, 'elementos');
+            console.log('🔮 Destruyendo', this.spellsModalElements.length, 'elementos del modal');
             this.spellsModalElements.forEach(element => {
                 if (element && element.destroy) {
                     element.destroy();
@@ -709,6 +745,18 @@ export class RightSidePanel {
             });
             this.spellsModalElements = null;
         }
+
+        // Destruir array de elementos de hechizos
+        if (this.spellListElements) {
+            console.log('🔮 Destruyendo', this.spellListElements.length, 'elementos de hechizos');
+            this.spellListElements.forEach(element => {
+                if (element && element.destroy) {
+                    element.destroy();
+                }
+            });
+            this.spellListElements = null;
+        }
+
         console.log('🔮 Modal cerrado');
     }
 
@@ -866,5 +914,60 @@ export class RightSidePanel {
             }
         });
         this.elements = [];
+    }
+
+    async saveSpellChanges() {
+        try {
+            console.log('💾 Guardando cambios de hechizos...');
+
+            // Obtener datos del usuario
+            const userData = this.scene.registry.get('userData');
+            const currentCharacterId = this.scene.registry.get('currentCharacterId');
+
+            if (!userData || !currentCharacterId) {
+                console.error('❌ No hay datos de usuario o ID de personaje');
+                return;
+            }
+
+            // Preparar datos de hechizos para el backend
+            const { SPELL_ID_MAP } = await import('../../classes/Spell.js');
+            const spellsData = this.player.spells.map(spell => {
+                // Buscar el ID del backend usando el mapeo inverso
+                const spellId = Object.keys(SPELL_ID_MAP).find(id => SPELL_ID_MAP[id] === spell.name);
+
+                return {
+                    spellId: spellId,
+                    level: spell.level,
+                    unlocked: true
+                };
+            });
+
+            // Datos a enviar
+            const updateData = {
+                spells: spellsData,
+                spellPoints: this.player.spellPoints
+            };
+
+            console.log('📤 Enviando datos:', updateData);
+
+            // Hacer la petición al backend
+            const response = await fetch(`http://localhost:3000/api/characters/${currentCharacterId}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updateData)
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ Hechizos guardados exitosamente:', result);
+            } else {
+                console.error('❌ Error guardando hechizos:', response.status);
+            }
+        } catch (error) {
+            console.error('❌ Error guardando cambios de hechizos:', error);
+        }
     }
 }

@@ -207,7 +207,7 @@ router.put('/:characterId', async (req, res) => {
         const allowedUpdates = [
             'level', 'experience', 'stats', 'position',
             'inventory', 'gameStats', 'characteristics', 'capitalPoints',
-            'resistances', 'damageBonus'
+            'resistances', 'damageBonus', 'spells', 'spellPoints'
         ];
 
         // Actualizar solo los campos permitidos
