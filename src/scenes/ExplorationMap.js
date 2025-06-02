@@ -255,10 +255,14 @@ export class ExplorationMap extends Phaser.Scene {
             this.currentCharacterId = character.id;
 
             console.log(`✅ Personaje sincronizado: ${character.name} - Nivel ${this.player.level}, XP: ${this.player.experience}/${this.player.level * 200}`);
+            console.log(`💰 Puntos de capital: ${this.player.capitalPoints}`);
 
             // Mostrar mensaje temporal si viene del combate
             if (this.comingFromCombat) {
                 this.showSyncMessage();
+
+                // Verificar si subió de nivel y mostrar notificación
+                this.checkLevelUpNotification(character);
             }
         } else {
             // No tiene personajes, crear uno nuevo
@@ -352,6 +356,12 @@ export class ExplorationMap extends Phaser.Scene {
         // Actualizar información del jugador solo si existe
         if (this.playerInfo && this.playerInfo.setText) {
             this.playerInfo.setText(`HP: ${this.player.currentHP}/${this.player.maxHP} | Nivel: ${this.player.level}`);
+        }
+
+        // Actualizar información de puntos de capital
+        if (this.capitalPointsInfo && this.capitalPointsInfo.setText) {
+            this.capitalPointsInfo.setText(`💰 Puntos de capital: ${this.player.capitalPoints}`);
+            this.capitalPointsInfo.setColor(this.player.capitalPoints > 0 ? '#ffff00' : '#cccccc');
         }
 
         // Actualizar barra de experiencia
@@ -591,6 +601,16 @@ export class ExplorationMap extends Phaser.Scene {
         this.playerInfo.setOrigin(0.5);
         this.playerInfo.setDepth(1001);
 
+        // Información de puntos de capital
+        this.capitalPointsInfo = this.add.text(120, 35, `💰 Puntos de capital: ${this.player.capitalPoints}`, {
+            fontSize: '11px',
+            fontFamily: 'Arial',
+            color: this.player.capitalPoints > 0 ? '#ffff00' : '#cccccc',
+            align: 'center'
+        });
+        this.capitalPointsInfo.setOrigin(0.5);
+        this.capitalPointsInfo.setDepth(1001);
+
         // Barra de experiencia
         this.createExperienceBar();
 
@@ -790,6 +810,38 @@ export class ExplorationMap extends Phaser.Scene {
         this.time.delayedCall(3000, () => {
             syncMessage.destroy();
         });
+    }
+
+    checkLevelUpNotification(character) {
+        // Verificar si hay puntos de capital disponibles (indica level up)
+        if (character.capitalPoints > 0) {
+            const levelUpMessage = this.add.text(640, 130, `🎉 ¡SUBISTE DE NIVEL! +${character.capitalPoints} puntos de capital disponibles`, {
+                fontSize: '20px',
+                fontFamily: 'Arial',
+                color: '#ffff00',
+                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                padding: { x: 15, y: 8 },
+                fontStyle: 'bold'
+            });
+            levelUpMessage.setOrigin(0.5);
+            levelUpMessage.setDepth(2001);
+
+            // Efecto de parpadeo
+            this.tweens.add({
+                targets: levelUpMessage,
+                alpha: { from: 1, to: 0.3 },
+                duration: 500,
+                yoyo: true,
+                repeat: 3
+            });
+
+            // Eliminar mensaje después de 5 segundos
+            this.time.delayedCall(5000, () => {
+                levelUpMessage.destroy();
+            });
+
+            console.log(`🎉 ¡Level up detectado! Puntos de capital disponibles: ${character.capitalPoints}`);
+        }
     }
 
     openCharacteristics() {

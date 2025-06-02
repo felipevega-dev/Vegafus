@@ -291,4 +291,45 @@ router.post('/:characterId/distribute-points', async (req, res) => {
     }
 });
 
+// Ruta para forzar level up (para testing)
+router.post('/:characterId/force-levelup', async (req, res) => {
+    try {
+        const character = await Character.findOne({
+            _id: req.params.characterId,
+            userId: req.userId,
+            isActive: true
+        });
+
+        if (!character) {
+            return res.status(404).json({
+                message: 'Personaje no encontrado'
+            });
+        }
+
+        // Dar suficiente XP para subir de nivel
+        const requiredXP = character.getExpForNextLevel();
+        character.experience = requiredXP;
+
+        // Verificar si puede subir de nivel y hacerlo
+        let levelsGained = 0;
+        while (character.canLevelUp()) {
+            character.levelUp();
+            levelsGained++;
+        }
+
+        await character.save();
+
+        res.json({
+            message: `¡Subiste ${levelsGained} nivel(es)!`,
+            character: character.toGameJSON()
+        });
+
+    } catch (error) {
+        console.error('Error forzando level up:', error);
+        res.status(500).json({
+            message: 'Error interno del servidor'
+        });
+    }
+});
+
 module.exports = router;

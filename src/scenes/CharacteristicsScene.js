@@ -37,8 +37,15 @@ export class CharacteristicsScene extends Phaser.Scene {
             color: '#cccccc'
         }).setOrigin(0.5);
 
+        // Información de HP
+        this.add.text(640, 160, `❤️ HP: ${this.player.currentHP}/${this.player.maxHP}`, {
+            fontSize: '16px',
+            fontFamily: 'Arial',
+            color: '#ff6666'
+        }).setOrigin(0.5);
+
         // Puntos disponibles
-        this.pointsText = this.add.text(640, 170, `Puntos disponibles: ${this.player.capitalPoints}`, {
+        this.pointsText = this.add.text(640, 185, `Puntos disponibles: ${this.player.capitalPoints}`, {
             fontSize: '20px',
             fontFamily: 'Arial',
             color: '#ffff00',
@@ -58,7 +65,7 @@ export class CharacteristicsScene extends Phaser.Scene {
 
     createCharacteristicsSection() {
         const startX = 300;
-        const startY = 220;
+        const startY = 240;
         const lineHeight = 45;
 
         // Título de sección
@@ -138,7 +145,7 @@ export class CharacteristicsScene extends Phaser.Scene {
 
     createResistancesSection() {
         const startX = 700;
-        const startY = 220;
+        const startY = 240;
         const lineHeight = 45;
 
         // Título de sección
@@ -150,10 +157,10 @@ export class CharacteristicsScene extends Phaser.Scene {
         });
 
         const resistances = [
-            { key: 'tierra', name: '🛡️ Res. Tierra', color: '#8B4513' },
-            { key: 'fuego', name: '🛡️ Res. Fuego', color: '#ff4400' },
-            { key: 'agua', name: '🛡️ Res. Agua', color: '#00ffff' },
-            { key: 'aire', name: '🛡️ Res. Aire', color: '#cccccc' }
+            { key: 'tierra', name: 'Res. Tierra', color: '#8B4513' },
+            { key: 'fuego', name: 'Res. Fuego', color: '#ff4400' },
+            { key: 'agua', name: 'Res. Agua', color: '#00ffff' },
+            { key: 'aire', name: 'Res. Aire', color: '#cccccc' }
         ];
 
         this.resistanceElements = {};
@@ -218,6 +225,18 @@ export class CharacteristicsScene extends Phaser.Scene {
         resetBtn.setOrigin(0.5);
         resetBtn.setInteractive();
         resetBtn.on('pointerdown', () => this.resetChanges());
+
+        // Información adicional
+        this.add.text(640, 550, 'Los puntos de capital se obtienen automáticamente al subir de nivel', {
+            fontSize: '14px',
+            fontFamily: 'Arial',
+            color: '#cccccc',
+            align: 'center'
+        }).setOrigin(0.5);
+
+
+
+
     }
 
     adjustCharacteristic(characteristic, amount) {
@@ -244,6 +263,19 @@ export class CharacteristicsScene extends Phaser.Scene {
     updateDisplay() {
         // Actualizar puntos disponibles
         this.pointsText.setText(`Puntos disponibles: ${this.player.capitalPoints}`);
+
+        // Actualizar información del personaje si cambió el nivel
+        const infoElements = this.children.list.filter(child =>
+            child.text && (child.text.includes('Nivel') || child.text.includes('HP:'))
+        );
+
+        infoElements.forEach(element => {
+            if (element.text.includes('Nivel')) {
+                element.setText(`${this.player.playerClass.toUpperCase()} - Nivel ${this.player.level}`);
+            } else if (element.text.includes('HP:')) {
+                element.setText(`❤️ HP: ${this.player.currentHP}/${this.player.maxHP}`);
+            }
+        });
 
         // Actualizar características
         Object.keys(this.characteristicElements).forEach(key => {
@@ -322,6 +354,110 @@ export class CharacteristicsScene extends Phaser.Scene {
                 errorMessage.destroy();
             });
         }
+    }
+
+    async forceLevelUp() {
+        if (!this.userData || !this.characterId) {
+            console.log('No se puede forzar level up: falta información de usuario');
+            return;
+        }
+
+        try {
+            // Mostrar mensaje de procesando
+            const processMessage = this.add.text(640, 580, 'Obteniendo puntos...', {
+                fontSize: '16px',
+                fontFamily: 'Arial',
+                color: '#ffff00'
+            }).setOrigin(0.5);
+
+            // Verificar token - puede estar en 'token' o 'authToken'
+            const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+            if (!token) {
+                throw new Error('No hay token de autenticación');
+            }
+
+            console.log('🔑 Enviando request con token:', token.substring(0, 20) + '...');
+
+            // Llamar a la ruta de force level up
+            const response = await fetch(`http://localhost:3000/api/characters/${this.characterId}/force-levelup`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            console.log('📡 Response status:', response.status);
+
+            if (response.ok) {
+                const data = await response.json();
+
+                // Actualizar datos del jugador
+                this.player.level = data.character.level;
+                this.player.capitalPoints = data.character.capitalPoints;
+                this.player.characteristics = data.character.characteristics;
+                this.player.maxHP = data.character.stats.hp.max;
+                this.player.currentHP = data.character.stats.hp.current;
+
+                // Actualizar display
+                this.updateDisplay();
+
+                processMessage.setText(`✅ ${data.message}`);
+                processMessage.setColor('#00ff00');
+
+                console.log('✅ Level up forzado exitoso:', data);
+            } else {
+                // Obtener detalles del error
+                let errorMessage = `Error ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.message || errorMessage;
+                } catch (e) {
+                    // Si no se puede parsear el JSON, usar el status
+                }
+
+                console.error('❌ Error del servidor:', response.status, errorMessage);
+                throw new Error(errorMessage);
+            }
+
+            // Eliminar mensaje después de 3 segundos
+            this.time.delayedCall(3000, () => {
+                processMessage.destroy();
+            });
+
+        } catch (error) {
+            console.error('❌ Error forzando level up:', error);
+
+            const errorMessage = this.add.text(640, 580, '❌ Error obteniendo puntos', {
+                fontSize: '16px',
+                fontFamily: 'Arial',
+                color: '#ff0000'
+            }).setOrigin(0.5);
+
+            this.time.delayedCall(3000, () => {
+                errorMessage.destroy();
+            });
+        }
+    }
+
+    debugToken() {
+        console.log('🔍 DEBUG TOKEN:');
+        console.log('token:', localStorage.getItem('token'));
+        console.log('authToken:', localStorage.getItem('authToken'));
+        console.log('userData:', this.userData);
+        console.log('characterId:', this.characterId);
+
+        // Mostrar en pantalla también
+        const debugMessage = this.add.text(640, 580,
+            `Token: ${localStorage.getItem('token') ? 'SÍ' : 'NO'} | AuthToken: ${localStorage.getItem('authToken') ? 'SÍ' : 'NO'}`, {
+            fontSize: '12px',
+            fontFamily: 'Arial',
+            color: '#ffff00'
+        }).setOrigin(0.5);
+
+        this.time.delayedCall(3000, () => {
+            debugMessage.destroy();
+        });
     }
 
     resetChanges() {
