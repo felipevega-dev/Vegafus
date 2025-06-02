@@ -1,0 +1,346 @@
+import { Player } from '../classes/Player.js';
+import { Grid } from '../classes/Grid.js';
+
+export class ExplorationMap extends Phaser.Scene {
+    constructor() {
+        super({ key: 'ExplorationMap' });
+    }
+
+    preload() {
+        // Cargar assets básicos (reutilizar los del combate)
+        this.load.image('character', 'assets/images/character.png');
+        this.load.image('enemy', 'assets/images/enemy.png');
+    }
+
+    create() {
+        console.log('Iniciando mapa de exploración');
+        
+        // Crear grid más grande para exploración
+        this.grid = new Grid(this, 30, 20); // 30x20 para exploración
+        
+        // Variables del sistema
+        this.selectedCell = null;
+        this.movementIndicators = [];
+        this.monsters = [];
+        this.interactionMode = false; // Para mostrar opciones de interacción
+        
+        // Crear el mapa de exploración
+        this.createExplorationMap();
+        
+        // Crear jugador
+        this.createPlayer();
+        
+        // Generar monstruos aleatorios
+        this.spawnRandomMonsters();
+        
+        // Configurar controles
+        this.setupControls();
+        
+        // Crear UI
+        this.createUI();
+    }
+
+    createExplorationMap() {
+        // Crear mapa de exploración más grande (30x20)
+        const tileSize = 32; // Tiles más pequeños para el mapa de exploración
+        const startX = 50;
+        const startY = 50;
+
+        for (let y = 0; y < 20; y++) {
+            for (let x = 0; x < 30; x++) {
+                const posX = startX + (x * tileSize);
+                const posY = startY + (y * tileSize);
+
+                // Crear diferentes tipos de terreno
+                let tileType = 'grass';
+                let walkable = true;
+
+                // Bordes del mapa
+                if (x === 0 || y === 0 || x === 29 || y === 19) {
+                    tileType = 'mountain';
+                    walkable = false;
+                }
+                // Algunos obstáculos aleatorios
+                else if (Math.random() < 0.1) {
+                    tileType = 'tree';
+                    walkable = false;
+                }
+                // Algunos ríos
+                else if ((x === 10 || x === 20) && y > 2 && y < 17) {
+                    tileType = 'water';
+                    walkable = false;
+                }
+
+                // Crear celda visual
+                const cellBg = this.add.rectangle(posX, posY, tileSize - 1, tileSize - 1, this.getTileColor(tileType), 0.6);
+                cellBg.setDepth(0);
+                
+                // Borde de la celda
+                const cellBorder = this.add.rectangle(posX, posY, tileSize - 1, tileSize - 1);
+                cellBorder.setStrokeStyle(1, 0x444444, 0.3);
+                cellBorder.setDepth(1);
+                
+                // Configurar grid
+                this.grid.cells[y][x].walkable = walkable;
+                
+                // Hacer interactiva
+                cellBg.gridX = x;
+                cellBg.gridY = y;
+                cellBg.setInteractive();
+                
+                // Efectos de hover
+                cellBg.on('pointerover', () => {
+                    if (walkable) {
+                        this.showMovementPreview(x, y);
+                    }
+                });
+                
+                cellBg.on('pointerout', () => {
+                    this.clearMovementPreview();
+                });
+            }
+        }
+    }
+
+    getTileColor(tileType) {
+        switch (tileType) {
+            case 'grass': return 0x228B22;
+            case 'mountain': return 0x696969;
+            case 'tree': return 0x006400;
+            case 'water': return 0x4169E1;
+            default: return 0x228B22;
+        }
+    }
+
+    createPlayer() {
+        // Crear jugador en posición inicial
+        this.player = new Player(this, 5, 10, 'mage');
+        
+        // Ajustar puntos para exploración (más movimiento)
+        this.player.maxMovementPoints = 10;
+        this.player.currentMovementPoints = 10;
+    }
+
+    spawnRandomMonsters() {
+        const monsterCount = 8; // 8 monstruos en el mapa
+        const monsterTypes = ['basic', 'strong', 'fast'];
+        
+        for (let i = 0; i < monsterCount; i++) {
+            // Encontrar posición aleatoria válida
+            let x, y;
+            let attempts = 0;
+            
+            do {
+                x = Phaser.Math.Between(2, 27);
+                y = Phaser.Math.Between(2, 17);
+                attempts++;
+            } while ((!this.grid.isWalkable(x, y) || this.grid.cells[y][x].occupied || 
+                     this.grid.getDistance(x, y, this.player.gridX, this.player.gridY) < 3) && 
+                     attempts < 50);
+            
+            if (attempts < 50) {
+                const monsterType = monsterTypes[i % monsterTypes.length];
+                const monster = this.createMonster(x, y, monsterType);
+                this.monsters.push(monster);
+            }
+        }
+    }
+
+    createMonster(gridX, gridY, type) {
+        const worldPos = this.grid.gridToWorld(gridX, gridY);
+        
+        // Crear sprite del monstruo
+        const sprite = this.add.sprite(worldPos.x, worldPos.y, 'enemy');
+        sprite.setDepth(100);
+        sprite.setInteractive();
+        
+        // Color según tipo
+        const colors = {
+            'basic': 0xff6666,
+            'strong': 0xff3333,
+            'fast': 0xffaa66
+        };
+        sprite.setTint(colors[type] || 0xff6666);
+        
+        // Ocupar celda
+        this.grid.setOccupied(gridX, gridY, { type: 'monster' });
+        
+        // Evento de clic en monstruo
+        sprite.on('pointerdown', () => {
+            this.showMonsterInteraction(gridX, gridY, type);
+        });
+        
+        return {
+            sprite,
+            gridX,
+            gridY,
+            type,
+            isAlive: true
+        };
+    }
+
+    showMonsterInteraction(gridX, gridY, monsterType) {
+        // Limpiar interacciones previas
+        this.clearInteractionUI();
+        
+        const worldPos = this.grid.gridToWorld(gridX, gridY);
+        
+        // Panel de interacción
+        const panel = this.add.rectangle(worldPos.x, worldPos.y - 60, 120, 80, 0x000000, 0.8);
+        panel.setDepth(200);
+        
+        // Botón de atacar
+        const attackButton = this.add.text(worldPos.x, worldPos.y - 80, 'ATACAR', {
+            fontSize: '12px',
+            fontFamily: 'Arial',
+            color: '#ff0000',
+            backgroundColor: '#333333',
+            padding: { x: 8, y: 4 }
+        });
+        attackButton.setOrigin(0.5);
+        attackButton.setDepth(201);
+        attackButton.setInteractive();
+        
+        // Botón de huir
+        const fleeButton = this.add.text(worldPos.x, worldPos.y - 50, 'HUIR', {
+            fontSize: '12px',
+            fontFamily: 'Arial',
+            color: '#ffff00',
+            backgroundColor: '#333333',
+            padding: { x: 8, y: 4 }
+        });
+        fleeButton.setOrigin(0.5);
+        fleeButton.setDepth(201);
+        fleeButton.setInteractive();
+        
+        // Eventos
+        attackButton.on('pointerdown', () => {
+            this.startCombat(monsterType);
+        });
+        
+        fleeButton.on('pointerdown', () => {
+            this.clearInteractionUI();
+        });
+        
+        // Guardar referencias para limpiar
+        this.interactionUI = [panel, attackButton, fleeButton];
+        this.interactionMode = true;
+    }
+
+    clearInteractionUI() {
+        if (this.interactionUI) {
+            this.interactionUI.forEach(element => {
+                if (element && element.destroy) {
+                    element.destroy();
+                }
+            });
+            this.interactionUI = [];
+        }
+        this.interactionMode = false;
+    }
+
+    startCombat(monsterType) {
+        console.log(`Iniciando combate contra: ${monsterType}`);
+        
+        // Guardar estado del jugador
+        this.registry.set('playerData', {
+            gridX: this.player.gridX,
+            gridY: this.player.gridY,
+            currentHP: this.player.currentHP,
+            level: this.player.level,
+            experience: this.player.experience,
+            playerClass: this.player.playerClass
+        });
+        
+        // Cambiar a escena de combate
+        this.scene.start('IsometricMap');
+    }
+
+    setupControls() {
+        // Input del mouse
+        this.input.on('pointerdown', (pointer) => {
+            if (!this.interactionMode) {
+                this.handleMouseClick(pointer);
+            }
+        });
+        
+        // Tecla ESC para cancelar interacciones
+        this.escapeKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+        this.escapeKey.on('down', () => {
+            this.clearInteractionUI();
+        });
+    }
+
+    handleMouseClick(pointer) {
+        const gridPos = this.grid.worldToGrid(pointer.worldX, pointer.worldY);
+        
+        if (gridPos.x < 0 || gridPos.y < 0 || gridPos.x >= this.grid.width || gridPos.y >= this.grid.height) {
+            return;
+        }
+        
+        // Mover jugador
+        if (this.player.moveTo(gridPos.x, gridPos.y)) {
+            console.log(`Jugador movido a: ${gridPos.x}, ${gridPos.y}`);
+        }
+    }
+
+    createUI() {
+        // Panel de información del jugador
+        const playerPanel = this.add.rectangle(100, 30, 180, 50, 0x000000, 0.8);
+        playerPanel.setDepth(1000);
+        
+        // Información del jugador
+        this.playerInfo = this.add.text(100, 30, 
+            `HP: ${this.player.currentHP}/${this.player.maxHP}\nNivel: ${this.player.level} | XP: ${this.player.experience}`, {
+            fontSize: '12px',
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            align: 'center'
+        });
+        this.playerInfo.setOrigin(0.5);
+        this.playerInfo.setDepth(1001);
+        
+        // Instrucciones
+        this.add.text(400, 30, 'Click en monstruos para interactuar | ESC para cancelar', {
+            fontSize: '12px',
+            fontFamily: 'Arial',
+            color: '#ffffff'
+        }).setDepth(1001);
+    }
+
+    // Métodos de preview (simplificados del combate)
+    showMovementPreview(targetX, targetY) {
+        this.clearMovementPreview();
+        
+        const path = this.grid.findPath(
+            this.player.gridX, this.player.gridY,
+            targetX, targetY,
+            this.player.currentMovementPoints
+        );
+        
+        if (!path || path.length === 0) return;
+        
+        // Mostrar camino simplificado
+        for (let i = 1; i < path.length; i++) {
+            const worldPos = this.grid.gridToWorld(path[i].x, path[i].y);
+            
+            const previewCell = this.add.rectangle(
+                worldPos.x, worldPos.y,
+                this.grid.tileSize - 4, this.grid.tileSize - 4,
+                0xffff00, 0.4
+            );
+            previewCell.setDepth(50);
+            
+            this.movementIndicators.push(previewCell);
+        }
+    }
+
+    clearMovementPreview() {
+        this.movementIndicators.forEach(indicator => {
+            if (indicator && indicator.destroy) {
+                indicator.destroy();
+            }
+        });
+        this.movementIndicators = [];
+    }
+}

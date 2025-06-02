@@ -173,7 +173,7 @@ export class SpellLibrary {
             ),
             new Spell(
                 'Rayo',
-                4,
+                3,
                 3,
                 'Ataca en línea recta atravesando enemigos',
                 (caster, targetX, targetY) => {

@@ -3,9 +3,17 @@ export class Grid {
         this.scene = scene;
         this.width = width;
         this.height = height;
-        this.tileSize = 40; // Tamaño de celda cuadrada
-        this.startX = 320; // Posición inicial X del grid
-        this.startY = 100; // Posición inicial Y del grid
+
+        // Configuración según el tipo de mapa
+        if (width > 20) { // Mapa de exploración
+            this.tileSize = 32;
+            this.startX = 50;
+            this.startY = 50;
+        } else { // Mapa de combate
+            this.tileSize = 40;
+            this.startX = 320;
+            this.startY = 100;
+        }
 
         // Matriz para almacenar información de cada celda
         this.cells = Array(height).fill().map(() => Array(width).fill().map(() => ({

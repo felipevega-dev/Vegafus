@@ -169,7 +169,7 @@ export class IsometricMap extends Phaser.Scene {
     // Generar enemigos aleatoriamente después del posicionamiento
     spawnEnemiesRandomly() {
         const enemyTypes = ['basic', 'strong', 'fast'];
-        const numEnemies = 3;
+        const numEnemies = 1; // Solo 1 enemigo para testing
 
         // Obtener celdas disponibles (no ocupadas y caminables)
         const availableCells = [];
@@ -372,9 +372,16 @@ export class IsometricMap extends Phaser.Scene {
             console.log('Selección de hechizo cancelada');
         });
 
-        // Tecla para terminar turno
+        // Teclas para terminar turno
         this.endTurnKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
         this.endTurnKey.on('down', () => {
+            if (this.turnManager.isPlayerTurn && this.turnManager.gameState === 'playing') {
+                this.turnManager.nextTurn();
+            }
+        });
+
+        // SPACE también termina turno
+        this.spaceKey.on('down', () => {
             if (this.turnManager.isPlayerTurn && this.turnManager.gameState === 'playing') {
                 this.turnManager.nextTurn();
             }

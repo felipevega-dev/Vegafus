@@ -209,10 +209,8 @@ export class CombatSummary {
     }
 
     returnToExploration() {
-        // Por ahora, simplemente reiniciar la escena
-        // En el futuro, aquí cambiaríamos a la escena de exploración
         console.log('Volviendo al mapa de exploración...');
-        
+
         // Crear un mensaje temporal
         const returnMessage = this.scene.add.text(640, 360, 'Volviendo al mapa de exploración...', {
             fontSize: '24px',
@@ -224,9 +222,9 @@ export class CombatSummary {
         returnMessage.setOrigin(0.5);
         returnMessage.setDepth(3000);
 
-        // Después de 2 segundos, reiniciar la escena (temporal)
-        this.scene.time.delayedCall(2000, () => {
-            this.scene.scene.restart();
+        // Después de 1 segundo, cambiar a la escena de exploración
+        this.scene.time.delayedCall(1000, () => {
+            this.scene.scene.start('ExplorationMap');
         });
     }
 

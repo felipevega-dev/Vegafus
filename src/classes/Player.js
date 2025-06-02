@@ -380,7 +380,7 @@ export class Player {
             range: spell.range,
             description: spell.description,
             cooldown: spell.currentCooldown,
-            canCast: spell.canCast(this, this.gridX, this.gridY).canCast
+            canCast: this.currentActionPoints >= spell.actionPointCost && spell.currentCooldown === 0
         }));
     }
 }
