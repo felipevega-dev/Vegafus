@@ -121,17 +121,48 @@ router.post('/', async (req, res) => {
                 break;
         }
 
+        // Hechizos específicos por clase
+        const getSpellsByClass = (characterClass) => {
+            switch (characterClass) {
+                case 'warrior':
+                    return [
+                        { spellId: 'golpe_telurico', level: 1, unlocked: true },
+                        { spellId: 'llama_ardiente', level: 1, unlocked: true },
+                        { spellId: 'tormenta_helada', level: 1, unlocked: true },
+                        { spellId: 'viento_cortante', level: 1, unlocked: true }
+                    ];
+                case 'mage':
+                    return [
+                        { spellId: 'terremoto', level: 1, unlocked: true },
+                        { spellId: 'bola_de_fuego', level: 1, unlocked: true },
+                        { spellId: 'rayo_de_hielo', level: 1, unlocked: true },
+                        { spellId: 'tormenta_electrica', level: 1, unlocked: true }
+                    ];
+                case 'archer':
+                    return [
+                        { spellId: 'flecha_rocosa', level: 1, unlocked: true },
+                        { spellId: 'flecha_explosiva', level: 1, unlocked: true },
+                        { spellId: 'flecha_de_hielo', level: 1, unlocked: true },
+                        { spellId: 'flecha_del_viento', level: 1, unlocked: true }
+                    ];
+                default:
+                    return [
+                        { spellId: 'golpe_telurico', level: 1, unlocked: true },
+                        { spellId: 'llama_ardiente', level: 1, unlocked: true },
+                        { spellId: 'tormenta_helada', level: 1, unlocked: true },
+                        { spellId: 'viento_cortante', level: 1, unlocked: true }
+                    ];
+            }
+        };
+
         // Crear personaje
         const character = new Character({
             userId: req.userId,
             name,
             class: characterClass,
             stats: initialStats,
-            spells: [
-                { spellId: 'fireball', level: 1, unlocked: true },
-                { spellId: 'heal', level: 1, unlocked: true },
-                { spellId: 'lightning', level: 1, unlocked: true }
-            ]
+            spells: getSpellsByClass(characterClass),
+            spellPoints: 3 // Puntos iniciales para probar el sistema
         });
 
         await character.save();

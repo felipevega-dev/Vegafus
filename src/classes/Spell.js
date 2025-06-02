@@ -9,6 +9,57 @@ export class Spell {
         this.currentCooldown = 0;
         this.element = element; // Elemento del hechizo: 'tierra', 'fuego', 'agua', 'aire'
         this.baseDamage = baseDamage; // Daño base del hechizo (para mostrar en UI)
+
+        // Sistema de niveles de hechizo (como Dofus)
+        this.level = 1; // Nivel actual del hechizo (1-5)
+        this.maxLevel = 5; // Nivel máximo
+    }
+
+    // Obtener daño escalado por nivel
+    getScaledDamage() {
+        if (!this.baseDamage) return this.baseDamage;
+
+        // Cada nivel aumenta el daño base en 20%
+        const damageMultiplier = 1 + ((this.level - 1) * 0.2);
+
+        if (this.baseDamage.includes('-')) {
+            // Para rangos como "30-35"
+            const [min, max] = this.baseDamage.split('-').map(Number);
+            const scaledMin = Math.floor(min * damageMultiplier);
+            const scaledMax = Math.floor(max * damageMultiplier);
+            return `${scaledMin}-${scaledMax}`;
+        } else {
+            // Para valores fijos
+            return Math.floor(Number(this.baseDamage) * damageMultiplier).toString();
+        }
+    }
+
+    // Subir nivel del hechizo
+    levelUp() {
+        if (this.level < this.maxLevel) {
+            this.level++;
+            return true;
+        }
+        return false;
+    }
+
+    // Bajar nivel del hechizo
+    levelDown() {
+        if (this.level > 1) {
+            this.level--;
+            return true;
+        }
+        return false;
+    }
+
+    // Verificar si se puede subir de nivel
+    canLevelUp() {
+        return this.level < this.maxLevel;
+    }
+
+    // Verificar si se puede bajar de nivel
+    canLevelDown() {
+        return this.level > 1;
     }
 
     // Verificar si el hechizo puede ser usado
@@ -104,6 +155,27 @@ export class Spell {
         }
     }
 }
+
+// Mapeo de IDs del backend a nombres del frontend
+export const SPELL_ID_MAP = {
+    // Guerrero
+    'golpe_telurico': 'Golpe Telúrico',
+    'llama_ardiente': 'Llama Ardiente',
+    'tormenta_helada': 'Tormenta Helada',
+    'viento_cortante': 'Viento Cortante',
+
+    // Mago
+    'terremoto': 'Terremoto',
+    'bola_de_fuego': 'Bola de Fuego',
+    'rayo_de_hielo': 'Rayo de Hielo',
+    'tormenta_electrica': 'Tormenta Eléctrica',
+
+    // Arquero
+    'flecha_rocosa': 'Flecha Rocosa',
+    'flecha_explosiva': 'Flecha Explosiva',
+    'flecha_de_hielo': 'Flecha de Hielo',
+    'flecha_del_viento': 'Flecha del Viento'
+};
 
 // Hechizos específicos por raza con elementos
 export class SpellLibrary {
@@ -515,7 +587,42 @@ export class SpellLibrary {
                 y += sy;
             }
         }
-        
+
         return path;
+    }
+
+    // Obtener hechizo por ID del backend
+    static getSpellById(spellId) {
+        const allSpells = [
+            ...this.getWarriorSpells(),
+            ...this.getMageSpells(),
+            ...this.getArcherSpells()
+        ];
+
+        const spellName = SPELL_ID_MAP[spellId];
+        return allSpells.find(spell => spell.name === spellName);
+    }
+
+    // Crear hechizos desde datos del backend
+    static createSpellsFromBackend(backendSpells) {
+        return backendSpells.map(backendSpell => {
+            const spell = this.getSpellById(backendSpell.spellId);
+            if (spell) {
+                // Clonar el hechizo y aplicar nivel del backend
+                const clonedSpell = new Spell(
+                    spell.name,
+                    spell.actionPointCost,
+                    spell.range,
+                    spell.description,
+                    spell.effect,
+                    spell.cooldown,
+                    spell.element,
+                    spell.baseDamage
+                );
+                clonedSpell.level = backendSpell.level;
+                return clonedSpell;
+            }
+            return null;
+        }).filter(spell => spell !== null);
     }
 }

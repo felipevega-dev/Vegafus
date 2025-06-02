@@ -279,7 +279,15 @@ export class ExplorationMap extends Phaser.Scene {
             this.player.characteristics = character.characteristics || {
                 tierra: 0, fuego: 0, agua: 0, aire: 0, vida: 0, sabiduria: 0
             };
+
+            // Cargar hechizos desde el backend
+            if (character.spells && character.spells.length > 0) {
+                const { SpellLibrary } = await import('../classes/Spell.js');
+                this.player.spells = SpellLibrary.createSpellsFromBackend(character.spells);
+                console.log('🔮 Hechizos cargados desde backend:', this.player.spells.length);
+            }
             this.player.capitalPoints = character.capitalPoints || 0;
+            this.player.spellPoints = character.spellPoints || 0;
 
             // Aplicar resistencias
             this.player.resistances = character.resistances || {

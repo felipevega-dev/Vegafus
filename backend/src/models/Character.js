@@ -82,6 +82,7 @@ const characterSchema = new mongoose.Schema({
         level: { type: Number, default: 1 },
         unlocked: { type: Boolean, default: true }
     }],
+    spellPoints: { type: Number, default: 0 }, // Puntos para subir hechizos
     achievements: [{
         achievementId: String,
         unlockedAt: { type: Date, default: Date.now }
@@ -155,6 +156,7 @@ characterSchema.methods.toGameJSON = function() {
         capitalPoints: this.capitalPoints,
         position: this.position,
         spells: this.spells,
+        spellPoints: this.spellPoints,
         gameStats: this.gameStats,
         lastSaved: this.gameStats.lastSaved
     };

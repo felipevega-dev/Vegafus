@@ -26,6 +26,9 @@ export class Player {
         };
         this.capitalPoints = 0;
 
+        // Sistema de puntos de hechizo (como Dofus)
+        this.spellPoints = 0; // Puntos disponibles para subir hechizos (se carga desde backend)
+
         // Resistencias elementales
         this.resistances = {
             tierra: 0,
@@ -478,8 +481,53 @@ export class Player {
             description: spell.description,
             element: spell.element,
             baseDamage: spell.baseDamage,
+            scaledDamage: spell.getScaledDamage(),
+            level: spell.level,
+            maxLevel: spell.maxLevel,
+            canLevelUp: spell.canLevelUp(),
+            canLevelDown: spell.canLevelDown(),
             cooldown: spell.currentCooldown,
             canCast: this.currentActionPoints >= spell.actionPointCost && spell.currentCooldown === 0
         }));
+    }
+
+    // Subir nivel de un hechizo
+    upgradeSpell(spellIndex) {
+        if (spellIndex < 0 || spellIndex >= this.spells.length) {
+            return { success: false, message: 'Hechizo no válido' };
+        }
+
+        if (this.spellPoints <= 0) {
+            return { success: false, message: 'No tienes puntos de hechizo disponibles' };
+        }
+
+        const spell = this.spells[spellIndex];
+        if (!spell.canLevelUp()) {
+            return { success: false, message: 'El hechizo ya está al nivel máximo' };
+        }
+
+        spell.levelUp();
+        this.spellPoints--;
+
+        console.log(`🔮 ${spell.name} subió a nivel ${spell.level}!`);
+        return { success: true, message: `${spell.name} subió a nivel ${spell.level}` };
+    }
+
+    // Bajar nivel de un hechizo (recuperar punto)
+    downgradeSpell(spellIndex) {
+        if (spellIndex < 0 || spellIndex >= this.spells.length) {
+            return { success: false, message: 'Hechizo no válido' };
+        }
+
+        const spell = this.spells[spellIndex];
+        if (!spell.canLevelDown()) {
+            return { success: false, message: 'El hechizo ya está al nivel mínimo' };
+        }
+
+        spell.levelDown();
+        this.spellPoints++;
+
+        console.log(`🔮 ${spell.name} bajó a nivel ${spell.level}. Punto de hechizo recuperado.`);
+        return { success: true, message: `${spell.name} bajó a nivel ${spell.level}` };
     }
 }

@@ -304,6 +304,8 @@ export class RightSidePanel {
 
     showSpellsModal() {
         console.log('🔮 Abriendo modal de hechizos...');
+        // Asegurarse de que no hay elementos previos
+        this.hideSpellsModal();
         this.createSpellsModal();
     }
 
@@ -322,14 +324,13 @@ export class RightSidePanel {
         );
         this.spellsModalBg.setDepth(depths.MODAL_BACKGROUND);
         this.spellsModalBg.setInteractive();
-        this.spellsModalBg.on('pointerdown', () => this.hideSpellsModal());
 
-        // Panel de hechizos
+        // Panel de hechizos (más grande para 4 hechizos)
         this.spellsModalPanel = this.scene.add.rectangle(
             LayoutConfig.GAME_WIDTH / 2,
             LayoutConfig.GAME_HEIGHT / 2,
-            600,
-            450,
+            700,
+            550,
             colors.PANEL_BG,
             0.95
         );
@@ -346,8 +347,46 @@ export class RightSidePanel {
         this.spellsModalTitle.setOrigin(0.5);
         this.spellsModalTitle.setDepth(depths.MODAL_ELEMENTS + 1);
 
+        // Botón X para cerrar
+        this.spellsModalCloseX = this.scene.add.text(
+            LayoutConfig.GAME_WIDTH / 2 + 280,
+            LayoutConfig.GAME_HEIGHT / 2 - 200,
+            '✕',
+            LayoutUtils.createTextStyle('BUTTON', {
+                color: colors.TEXT_SECONDARY,
+                fontSize: '20px'
+            })
+        );
+        this.spellsModalCloseX.setOrigin(0.5);
+        this.spellsModalCloseX.setDepth(depths.MODAL_ELEMENTS + 2);
+        this.spellsModalCloseX.setInteractive();
+        this.spellsModalCloseX.on('pointerdown', () => {
+            console.log('🔮 Botón X clickeado');
+            this.hideSpellsModal();
+        });
+        this.spellsModalCloseX.on('pointerover', () => {
+            this.spellsModalCloseX.setColor(colors.TEXT_ACCENT);
+        });
+        this.spellsModalCloseX.on('pointerout', () => {
+            this.spellsModalCloseX.setColor(colors.TEXT_SECONDARY);
+        });
+
+        // Información de puntos de hechizo
+        this.spellsModalPoints = this.scene.add.text(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2 - 175,
+            `Puntos de hechizo disponibles: ${this.player.spellPoints}`,
+            LayoutUtils.createTextStyle('BODY', {
+                color: this.player.spellPoints > 0 ? colors.TEXT_ACCENT : colors.TEXT_SECONDARY,
+                fontSize: '12px'
+            })
+        );
+        this.spellsModalPoints.setOrigin(0.5);
+        this.spellsModalPoints.setDepth(depths.MODAL_ELEMENTS + 1);
+
         // Crear hechizos con iconos y mejor diseño
         const spells = this.player.getSpellsInfo ? this.player.getSpellsInfo() : [];
+        console.log('🔮 Spells obtenidos:', spells.length, spells);
 
         if (spells.length === 0) {
             // Mensaje cuando no hay hechizos
@@ -396,6 +435,8 @@ export class RightSidePanel {
             this.spellsModalBg,
             this.spellsModalPanel,
             this.spellsModalTitle,
+            this.spellsModalCloseX,
+            this.spellsModalPoints,
             this.closeSpellsButton
         );
 
@@ -405,12 +446,15 @@ export class RightSidePanel {
         }
 
         // Atajo ESC para cerrar
-        this.scene.input.keyboard.once('keydown-ESC', () => this.hideSpellsModal());
+        this.scene.input.keyboard.once('keydown-ESC', () => {
+            console.log('🔮 ESC presionado');
+            this.hideSpellsModal();
+        });
     }
 
     createSpellsList(spells, colors, depths) {
-        const startY = LayoutConfig.GAME_HEIGHT / 2 - 150;
-        const spellHeight = 70;
+        const startY = LayoutConfig.GAME_HEIGHT / 2 - 130;
+        const spellHeight = 80;
 
         spells.forEach((spell, index) => {
             const y = startY + (index * spellHeight);
@@ -424,7 +468,7 @@ export class RightSidePanel {
                 LayoutConfig.GAME_WIDTH / 2,
                 y,
                 550,
-                60,
+                70,
                 colors.BUTTON_BG,
                 0.8
             );
@@ -453,11 +497,11 @@ export class RightSidePanel {
             iconText.setOrigin(0.5);
             iconText.setDepth(depths.MODAL_ELEMENTS + 3);
 
-            // Nombre del hechizo
+            // Nombre del hechizo con nivel
             const spellName = this.scene.add.text(
                 LayoutConfig.GAME_WIDTH / 2 - 180,
-                y - 15,
-                spell.name,
+                y - 20,
+                `${spell.name} (Nivel ${spell.level})`,
                 LayoutUtils.createTextStyle('BUTTON', {
                     color: colors.TEXT_ACCENT,
                     fontSize: '14px'
@@ -468,10 +512,10 @@ export class RightSidePanel {
 
             // Información del hechizo
             const elementName = this.getElementName(spell.element);
-            const damageText = spell.baseDamage ? ` | Daño: ${spell.baseDamage}` : '';
+            const damageText = spell.scaledDamage ? ` | Daño: ${spell.scaledDamage}` : '';
             const spellInfo = this.scene.add.text(
                 LayoutConfig.GAME_WIDTH / 2 - 180,
-                y + 5,
+                y - 5,
                 `${elementName} | PA: ${spell.actionPointCost} | Rango: ${spell.range}${damageText}`,
                 LayoutUtils.createTextStyle('BODY', {
                     color: colors.TEXT_SECONDARY,
@@ -484,12 +528,12 @@ export class RightSidePanel {
             // Descripción del hechizo
             const spellDesc = this.scene.add.text(
                 LayoutConfig.GAME_WIDTH / 2 - 180,
-                y + 20,
+                y + 15,
                 spell.description || 'Sin descripción',
                 LayoutUtils.createTextStyle('BODY', {
                     color: colors.TEXT_PRIMARY,
                     fontSize: '10px',
-                    wordWrap: { width: 350 }
+                    wordWrap: { width: 280 }
                 })
             );
             spellDesc.setOrigin(0, 0.5);
@@ -498,6 +542,106 @@ export class RightSidePanel {
             // Guardar elementos para limpiar después
             if (!this.spellsModalElements) this.spellsModalElements = [];
             this.spellsModalElements.push(spellBg, iconBg, iconText, spellName, spellInfo, spellDesc);
+
+            // Botones de nivel (+ y -)
+            this.createSpellLevelButtons(spell, y, colors, depths);
+        });
+    }
+
+    createSpellLevelButtons(spell, y, colors, depths) {
+        const rightX = LayoutConfig.GAME_WIDTH / 2 + 200;
+
+        // Botón - (bajar nivel)
+        const minusButton = this.scene.add.text(
+            rightX,
+            y - 10,
+            '−',
+            LayoutUtils.createTextStyle('BUTTON', {
+                color: spell.canLevelDown ? colors.TEXT_ACCENT : colors.TEXT_DISABLED,
+                fontSize: '20px',
+                backgroundColor: spell.canLevelDown ? 'rgba(255, 255, 255, 0.1)' : 'rgba(100, 100, 100, 0.1)',
+                padding: { x: 8, y: 4 }
+            })
+        );
+        minusButton.setOrigin(0.5);
+        minusButton.setDepth(depths.MODAL_ELEMENTS + 3);
+
+        if (spell.canLevelDown) {
+            minusButton.setInteractive();
+            minusButton.on('pointerdown', () => {
+                console.log('🔮 Botón - clickeado para', spell.name);
+                const result = this.player.downgradeSpell(spell.index);
+                console.log('🔮 Resultado downgrade:', result);
+                if (result.success) {
+                    this.refreshSpellsModal();
+                }
+            });
+            minusButton.on('pointerover', () => {
+                minusButton.setColor('#ffffff');
+            });
+            minusButton.on('pointerout', () => {
+                minusButton.setColor(colors.TEXT_ACCENT);
+            });
+        }
+
+        // Indicador de nivel (círculos)
+        const levelIndicator = this.scene.add.text(
+            rightX,
+            y + 10,
+            '●'.repeat(spell.level) + '○'.repeat(spell.maxLevel - spell.level),
+            LayoutUtils.createTextStyle('BODY', {
+                color: colors.TEXT_ACCENT,
+                fontSize: '12px'
+            })
+        );
+        levelIndicator.setOrigin(0.5);
+        levelIndicator.setDepth(depths.MODAL_ELEMENTS + 3);
+
+        // Botón + (subir nivel)
+        const plusButton = this.scene.add.text(
+            rightX,
+            y + 30,
+            '+',
+            LayoutUtils.createTextStyle('BUTTON', {
+                color: (spell.canLevelUp && this.player.spellPoints > 0) ? colors.TEXT_ACCENT : colors.TEXT_DISABLED,
+                fontSize: '20px',
+                backgroundColor: (spell.canLevelUp && this.player.spellPoints > 0) ? 'rgba(255, 255, 255, 0.1)' : 'rgba(100, 100, 100, 0.1)',
+                padding: { x: 8, y: 4 }
+            })
+        );
+        plusButton.setOrigin(0.5);
+        plusButton.setDepth(depths.MODAL_ELEMENTS + 3);
+
+        if (spell.canLevelUp && this.player.spellPoints > 0) {
+            plusButton.setInteractive();
+            plusButton.on('pointerdown', () => {
+                console.log('🔮 Botón + clickeado para', spell.name);
+                const result = this.player.upgradeSpell(spell.index);
+                console.log('🔮 Resultado upgrade:', result);
+                if (result.success) {
+                    this.refreshSpellsModal();
+                }
+            });
+            plusButton.on('pointerover', () => {
+                plusButton.setColor('#ffffff');
+            });
+            plusButton.on('pointerout', () => {
+                plusButton.setColor(colors.TEXT_ACCENT);
+            });
+        }
+
+        // Agregar botones a la lista de elementos
+        this.spellsModalElements.push(minusButton, levelIndicator, plusButton);
+    }
+
+    refreshSpellsModal() {
+        console.log('🔮 Refrescando modal de hechizos...');
+        // Cerrar y reabrir el modal para actualizar la información
+        this.hideSpellsModal();
+        // Pequeño delay para evitar conflictos
+        this.scene.time.delayedCall(100, () => {
+            console.log('🔮 Reabriendo modal...');
+            this.showSpellsModal();
         });
     }
 
@@ -535,7 +679,29 @@ export class RightSidePanel {
     }
 
     hideSpellsModal() {
+        console.log('🔮 hideSpellsModal llamado');
+
+        // Destruir elementos individuales si existen
+        const elementsToDestroy = [
+            'spellsModalBg',
+            'spellsModalPanel',
+            'spellsModalTitle',
+            'spellsModalCloseX',
+            'spellsModalPoints',
+            'spellsModalContent',
+            'closeSpellsButton'
+        ];
+
+        elementsToDestroy.forEach(elementName => {
+            if (this[elementName] && this[elementName].destroy) {
+                this[elementName].destroy();
+                this[elementName] = null;
+            }
+        });
+
+        // Destruir array de elementos
         if (this.spellsModalElements) {
+            console.log('🔮 Destruyendo', this.spellsModalElements.length, 'elementos');
             this.spellsModalElements.forEach(element => {
                 if (element && element.destroy) {
                     element.destroy();
@@ -543,6 +709,7 @@ export class RightSidePanel {
             });
             this.spellsModalElements = null;
         }
+        console.log('🔮 Modal cerrado');
     }
 
     showConfigMenu() {
