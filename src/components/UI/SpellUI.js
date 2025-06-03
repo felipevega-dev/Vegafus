@@ -44,14 +44,15 @@ export class SpellUI {
             const col = index % 2; // 0 = izquierda, 1 = derecha
             const row = Math.floor(index / 2); // Fila
 
-            // Posiciones base del menú (ajustadas para la nueva escala y posición)
-            const baseX = 1150;
-            const baseY = 310; // Ajustado para la nueva posición del menú
+            // Posiciones base del menú (ajustadas para calzar con las casillas del UI)
+            const baseX = 1150; // Posición X central
+            const baseY = 232; // Ajustado para calzar con las casillas
             const slotSize = 40; // Casillas aún más grandes
-            const spacing = 35; // Espaciado ajustado para la escala más pequeña
+            const spacingX = 70; // Espaciado horizontal entre casillas
+            const spacingY = 70; // Espaciado vertical entre casillas
 
-            const x = baseX + (col - 0.5) * spacing; // -0.5 para centrar
-            const y = baseY + row * spacing;
+            const x = baseX + (col - 0.5) * spacingX; // -0.5 para centrar entre las dos columnas
+            const y = baseY + row * spacingY;
 
             // Crear área invisible para interacción (sobre la casilla)
             const buttonBg = this.scene.add.rectangle(x, y, slotSize, slotSize, 0x000000, 0);
