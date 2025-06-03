@@ -92,6 +92,15 @@ export class CharacteristicsScene extends Phaser.Scene {
 
         // Actualizar display
         this.updateDisplay();
+
+        // Escuchar eventos de actualización de equipamiento
+        this.events.on('equipmentStatsUpdated', (equipmentStats) => {
+            console.log('📊 Características actualizadas por equipamiento:', equipmentStats);
+            this.updateDisplay();
+        });
+
+        // Cargar stats de equipamiento iniciales
+        this.loadEquipmentStats();
     }
 
     createCharacteristicsSection() {
@@ -310,24 +319,34 @@ export class CharacteristicsScene extends Phaser.Scene {
 
         // Actualizar características
         Object.keys(this.characteristicElements).forEach(key => {
-            const value = this.player.characteristics[key];
+            const baseValue = this.player.characteristics[key];
+            const equipmentBonus = this.player.equipmentBonus?.[key] || 0;
+            const totalValue = baseValue + equipmentBonus;
             const elements = this.characteristicElements[key];
 
-            elements.valueText.setText(value.toString());
+            // Mostrar valor base + bono de equipamiento
+            let displayText = baseValue.toString();
+            if (equipmentBonus > 0) {
+                displayText += ` (+${equipmentBonus})`;
+                elements.valueText.setColor('#00ff00'); // Verde para mostrar bono
+            } else {
+                elements.valueText.setColor('#ffffff'); // Blanco normal
+            }
+            elements.valueText.setText(displayText);
 
-            // Mostrar efecto
+            // Mostrar efecto (usar valor total)
             let effect = '';
             if (key === 'vida') {
-                effect = `(+${value} HP máximo)`;
+                effect = `(+${totalValue} HP máximo)`;
             } else if (key === 'sabiduria') {
-                effect = `(+${value}% XP)`;
+                effect = `(+${totalValue}% XP)`;
             } else {
-                effect = `(+${value}% daño ${key})`;
+                effect = `(+${totalValue}% daño ${key})`;
             }
             elements.effectText.setText(effect);
 
             // Habilitar/deshabilitar botones
-            elements.minusBtn.setAlpha(value > 0 ? 1 : 0.5);
+            elements.minusBtn.setAlpha(baseValue > 0 ? 1 : 0.5);
             elements.plusBtn.setAlpha(this.player.capitalPoints > 0 ? 1 : 0.5);
         });
 
@@ -499,6 +518,47 @@ export class CharacteristicsScene extends Phaser.Scene {
     resetChanges() {
         // Aquí podrías implementar un reset a los valores originales
         console.log('Reset no implementado aún');
+    }
+
+    async loadEquipmentStats() {
+        try {
+            const authToken = localStorage.getItem('authToken');
+
+            if (!this.characterId || !authToken) {
+                console.warn('⚠️ No se pueden cargar stats de equipamiento: falta characterId o token');
+                return;
+            }
+
+            console.log('📊 Cargando stats de equipamiento para características...');
+            const response = await fetch(`http://localhost:3000/api/equipment/${this.characterId}/stats`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success && result.data) {
+                    console.log('📊 Stats de equipamiento cargados:', result.data);
+
+                    // Aplicar bonos de equipamiento al jugador
+                    this.player.equipmentBonus = result.data;
+
+                    // Actualizar display
+                    this.updateDisplay();
+
+                    console.log('✅ Stats de equipamiento aplicados en características');
+                } else {
+                    console.warn('⚠️ No se pudieron cargar stats de equipamiento');
+                }
+            } else {
+                console.error('❌ Error cargando stats de equipamiento:', response.status);
+            }
+        } catch (error) {
+            console.error('❌ Error cargando stats de equipamiento:', error);
+        }
     }
 
     closeInterface() {

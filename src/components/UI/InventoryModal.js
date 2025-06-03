@@ -521,10 +521,39 @@ export class InventoryModal {
             console.log('📥 Response data:', result);
 
             if (result.success) {
-                // Actualizar el estado local
+                console.log('✅ Item equipado exitosamente');
+
+                // Actualizar el estado local del jugador
+                if (!this.player.equipment) {
+                    this.player.equipment = {};
+                }
+
+                // Marcar el item como equipado en el inventario local
+                const inventoryItem = this.player.inventory.find(invItem => invItem.itemId === item.itemId);
+                if (inventoryItem) {
+                    inventoryItem.equipped = true;
+                }
+
+                // Agregar al equipamiento local
+                this.player.equipment[slotType] = {
+                    itemId: item.itemId,
+                    quantity: 1,
+                    equippedAt: new Date(),
+                    itemInfo: item.itemInfo
+                };
+
+                // Actualizar displays inmediatamente
                 this.updateEquipmentDisplay();
                 this.refreshInventory();
-                console.log('✅ Item equipado exitosamente');
+                this.updateActionButtons();
+
+                // Actualizar stats de equipamiento
+                await this.updatePlayerEquipmentStats();
+
+                // Limpiar selección
+                this.selectedItem = null;
+                this.updateItemInfo(null);
+
             } else {
                 console.error('❌ Error equipando item:', result.message);
             }
@@ -556,12 +585,38 @@ export class InventoryModal {
 
             const result = await response.json();
             if (result.success) {
-                // Actualizar el estado local
+                console.log('✅ Item desequipado exitosamente');
+
+                // Obtener información del item desequipado
+                const unequippedItem = this.player.equipment && this.player.equipment[slotType];
+
+                if (unequippedItem) {
+                    // Marcar el item como no equipado en el inventario local
+                    const inventoryItem = this.player.inventory.find(invItem => invItem.itemId === unequippedItem.itemId);
+                    if (inventoryItem) {
+                        inventoryItem.equipped = false;
+                    }
+
+                    // Remover del equipamiento local
+                    if (this.player.equipment) {
+                        delete this.player.equipment[slotType];
+                    }
+                }
+
+                // Actualizar displays inmediatamente
                 this.updateEquipmentDisplay();
                 this.refreshInventory();
-                console.log('Item desequipado exitosamente');
+                this.updateActionButtons();
+
+                // Actualizar stats de equipamiento
+                await this.updatePlayerEquipmentStats();
+
+                // Limpiar selección
+                this.selectedItem = null;
+                this.updateItemInfo(null);
+
             } else {
-                console.error('Error desequipando item:', result.message);
+                console.error('❌ Error desequipando item:', result.message);
             }
         } catch (error) {
             console.error('Error en la petición de desequipar:', error);
@@ -587,10 +642,11 @@ export class InventoryModal {
             slot.item = null;
         });
 
-        // Cargar items del jugador
+        // Cargar items del jugador (filtrar items equipados)
         const inventory = this.player.inventory || [];
+        const unequippedItems = inventory.filter(item => !item.equipped);
 
-        inventory.forEach((item, index) => {
+        unequippedItems.forEach((item, index) => {
             if (index < this.inventorySlots.length) {
                 const slot = this.inventorySlots[index];
                 slot.item = item;
@@ -744,6 +800,49 @@ export class InventoryModal {
 
             // Desmarcar que el movimiento está bloqueado
             this.scene.movementBlocked = false;
+        }
+    }
+
+    // Actualizar stats de equipamiento del jugador
+    async updatePlayerEquipmentStats() {
+        try {
+            const characterId = this.scene.registry.get('currentCharacterId') || this.player.id;
+            const authToken = localStorage.getItem('authToken');
+
+            if (!characterId || !authToken) {
+                console.warn('⚠️ No se puede actualizar stats: falta characterId o token');
+                return;
+            }
+
+            console.log('📊 Obteniendo stats de equipamiento...');
+            const response = await fetch(`http://localhost:3000/api/equipment/${characterId}/stats`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success && result.data) {
+                    console.log('📊 Stats de equipamiento obtenidos:', result.data);
+
+                    // Aplicar bonos de equipamiento al jugador
+                    this.player.equipmentBonus = result.data;
+
+                    // Notificar a otros sistemas que los stats han cambiado
+                    this.scene.events.emit('equipmentStatsUpdated', result.data);
+
+                    console.log('✅ Stats de equipamiento aplicados al jugador');
+                } else {
+                    console.warn('⚠️ No se pudieron obtener stats de equipamiento');
+                }
+            } else {
+                console.error('❌ Error obteniendo stats de equipamiento:', response.status);
+            }
+        } catch (error) {
+            console.error('❌ Error actualizando stats de equipamiento:', error);
         }
     }
 
