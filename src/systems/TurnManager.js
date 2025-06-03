@@ -96,6 +96,15 @@ export class TurnManager {
             currentEntity.startTurn();
         }
 
+        // Asegurar que el jugador tenga los puntos correctos para combate
+        if (this.isPlayerTurn && currentEntity.constructor.name === 'Player') {
+            // Asegurar que los puntos de movimiento sean correctos para combate
+            if (currentEntity.maxMovementPoints > 10) { // Si tiene puntos de exploración
+                currentEntity.maxMovementPoints = 3;
+                currentEntity.currentMovementPoints = 3;
+            }
+        }
+
         // Configurar temporizador solo para el jugador
         if (this.isPlayerTurn) {
             this.timeRemaining = this.turnTimeLimit;

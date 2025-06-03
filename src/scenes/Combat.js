@@ -110,8 +110,15 @@ export class Combat extends Phaser.Scene {
             return;
         }
 
+        // Configurar puntos de movimiento para combate (no exploración)
+        this.player.maxMovementPoints = 3;
+        this.player.currentMovementPoints = 3;
+
         // Inicializar sistemas que dependen del jugador
         this.initializePlayerDependentSystems();
+
+        // Mover jugador a zona de posicionamiento automáticamente
+        this.movePlayerToPositioningZone();
 
         // Añadir jugador al sistema de turnos
         this.turnManager.addEntity(this.player);
@@ -284,7 +291,8 @@ export class Combat extends Phaser.Scene {
 
             this.scene.start('ExplorationMapRefactored', {
                 userData: this.userData,
-                characterId: this.currentCharacterId
+                characterId: this.currentCharacterId,
+                comingFromCombat: true // Bandera para indicar que viene del combate
             });
         });
     }
@@ -298,9 +306,28 @@ export class Combat extends Phaser.Scene {
 
             this.scene.start('ExplorationMapRefactored', {
                 userData: this.userData,
-                characterId: this.currentCharacterId
+                characterId: this.currentCharacterId,
+                comingFromCombat: true // Bandera para indicar que viene del combate
             });
         });
+    }
+
+    // Mover jugador automáticamente a una zona de posicionamiento
+    movePlayerToPositioningZone() {
+        // Buscar la primera zona de posicionamiento disponible
+        const validCells = this.movementSystem.getValidPositioningCells();
+
+        if (validCells.length > 0) {
+            // Elegir la primera celda disponible (o la más central)
+            const targetCell = validCells[0];
+
+            // Mover al jugador a esa posición
+            this.movementSystem.movePlayerToPosition(targetCell.x, targetCell.y);
+
+            console.log(`Jugador posicionado automáticamente en: ${targetCell.x}, ${targetCell.y}`);
+        } else {
+            console.warn('No se encontraron zonas de posicionamiento válidas');
+        }
     }
 
     // Limpiar estado antes de cambiar de escena

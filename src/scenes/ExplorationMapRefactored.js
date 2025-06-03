@@ -214,8 +214,12 @@ export class ExplorationMapRefactored extends Phaser.Scene {
             this.inventoryPanel.refreshInventory();
         }
 
-        // Refrescar panel lateral derecho si existe
-        if (this.rightSidePanel) {
+        // Recrear panel lateral derecho si no existe o actualizarlo
+        if (!this.rightSidePanel) {
+            console.log('🎮 Recreando panel lateral derecho después del combate...');
+            this.rightSidePanel = new RightSidePanel(this, this.player);
+        } else {
+            console.log('🎮 Actualizando panel lateral derecho después del combate...');
             this.rightSidePanel.player = this.player; // Actualizar referencia del jugador
         }
 
