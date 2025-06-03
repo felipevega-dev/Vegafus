@@ -517,6 +517,8 @@ export class CombatSummary {
     clearSummary() {
         if (!this.isVisible) return;
 
+        console.log('🧹 Iniciando limpieza de UI de combate...');
+
         // Limpiar todos los elementos del resumen
         this.summaryElements.forEach(element => {
             if (element && element.destroy) {
@@ -526,17 +528,50 @@ export class CombatSummary {
 
         // Limpiar también cualquier elemento de UI que pueda haber quedado
         if (this.scene && this.scene.children) {
-            const uiElements = this.scene.children.list.filter(child =>
-                child.depth >= 2000 && // Elementos de UI con depth alto
-                child.type !== 'Graphics' && // No limpiar gráficos del mapa
-                child !== this.scene.player // No limpiar el jugador
-            );
+            const uiElements = this.scene.children.list.filter(child => {
+                // Limpiar elementos con depth alto (UI) pero preservar elementos importantes
+                const isUIElement = child.depth >= 2000;
+                const isNotGraphics = child.type !== 'Graphics';
+                const isNotPlayer = child !== this.scene.player;
+                const isNotGrid = !child.isGridElement; // Preservar elementos del grid
+                const isNotMonster = !child.isMonster; // Preservar monstruos
+
+                return isUIElement && isNotGraphics && isNotPlayer && isNotGrid && isNotMonster;
+            });
+
+            console.log(`🧹 Limpiando ${uiElements.length} elementos de UI restantes`);
 
             uiElements.forEach(element => {
                 if (element && element.destroy) {
-                    element.destroy();
+                    try {
+                        element.destroy();
+                    } catch (error) {
+                        console.warn('Error limpiando elemento:', error);
+                    }
                 }
             });
+        }
+
+        // Limpiar específicamente elementos de texto que puedan haber quedado
+        if (this.scene && this.scene.children) {
+            const textElements = this.scene.children.list.filter(child =>
+                child.type === 'Text' &&
+                child.depth >= 1000 &&
+                child !== this.scene.player
+            );
+
+            if (textElements.length > 0) {
+                console.log(`🧹 Limpiando ${textElements.length} elementos de texto adicionales`);
+                textElements.forEach(element => {
+                    if (element && element.destroy) {
+                        try {
+                            element.destroy();
+                        } catch (error) {
+                            console.warn('Error limpiando texto:', error);
+                        }
+                    }
+                });
+            }
         }
 
         this.summaryElements = [];

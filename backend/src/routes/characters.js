@@ -216,6 +216,26 @@ router.put('/:characterId', async (req, res) => {
                 if (field === 'stats') {
                     // Manejar stats de forma especial para evitar sobrescribir campos existentes
                     character.stats = { ...character.stats, ...req.body[field] };
+                } else if (field === 'inventory') {
+                    // Transformar inventario para asegurar formato correcto
+                    const inventory = req.body[field];
+                    if (Array.isArray(inventory)) {
+                        character.inventory = inventory.map(item => {
+                            // Si el item tiene 'id' en lugar de 'itemId', convertirlo
+                            if (item.id && !item.itemId) {
+                                return {
+                                    itemId: item.id,
+                                    quantity: item.quantity || 1,
+                                    equipped: item.equipped || false,
+                                    obtainedAt: item.obtainedAt || new Date()
+                                };
+                            }
+                            // Si ya tiene itemId, mantenerlo
+                            return item;
+                        });
+                    } else {
+                        character[field] = req.body[field];
+                    }
                 } else {
                     character[field] = req.body[field];
                 }
