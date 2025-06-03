@@ -292,7 +292,7 @@ export class SpellLibrary {
                 1, // 1 turno de cooldown
                 'tierra', // Elemento tierra
                 '30-35', // Daño base aproximado (ataque * 1.5)
-                'images/ui/spell-icons/warrior/golpe_telurico.png' // Icono del hechizo
+                'assets/assets/images/ui/spell-icons/warrior/golpe_telurico.png' // Icono del hechizo
             ),
             new Spell(
                 'Llama Ardiente',
@@ -325,7 +325,7 @@ export class SpellLibrary {
                 0, // Sin cooldown
                 'fuego', // Elemento fuego
                 '28-32', // Daño base aproximado (ataque + 10)
-                'images/ui/spell-icons/warrior/llama_ardiente.png' // Icono del hechizo
+                'assets/assets/images/ui/spell-icons/warrior/llama_ardiente.png' // Icono del hechizo
             ),
             new Spell(
                 'Tormenta Helada',
@@ -355,7 +355,7 @@ export class SpellLibrary {
                 1, // 1 turno de cooldown
                 'agua', // Elemento agua
                 '26-30', // Daño base aproximado (ataque + 8)
-                'images/ui/spell-icons/warrior/tormenta_helada.png' // Icono del hechizo
+                'assets/assets/images/ui/spell-icons/warrior/tormenta_helada.png' // Icono del hechizo
             ),
             new Spell(
                 'Viento Cortante',
@@ -385,7 +385,7 @@ export class SpellLibrary {
                 0, // Sin cooldown
                 'aire', // Elemento aire
                 '24-28', // Daño base aproximado (ataque + 6)
-                'images/ui/spell-icons/warrior/viento_cortante.png' // Icono del hechizo
+                'assets/images/ui/spell-icons/warrior/viento_cortante.png' // Icono del hechizo
             )
         ];
     }
@@ -432,7 +432,7 @@ export class SpellLibrary {
                 2, // 2 turnos de cooldown
                 'tierra', // Elemento tierra
                 '30-40', // Daño base en área
-                'images/ui/spell-icons/mage/terremoto.png' // Icono del hechizo
+                'assets/images/ui/spell-icons/mage/terremoto.png' // Icono del hechizo
             ),
             new Spell(
                 'Bola de Fuego',
@@ -462,7 +462,7 @@ export class SpellLibrary {
                 1, // 1 turno de cooldown
                 'fuego', // Elemento fuego
                 '25-35', // Daño base
-                'images/ui/spell-icons/mage/bola_de_fuego.png' // Icono del hechizo
+                'assets/images/ui/spell-icons/mage/bola_de_fuego.png' // Icono del hechizo
             ),
             new Spell(
                 'Rayo de Hielo',
@@ -492,7 +492,7 @@ export class SpellLibrary {
                 0, // Sin cooldown
                 'agua', // Elemento agua
                 '20-30', // Daño base
-                'images/ui/spell-icons/mage/rayo_de_hielo.png' // Icono del hechizo
+                'assets/images/ui/spell-icons/mage/rayo_de_hielo.png' // Icono del hechizo
             ),
             new Spell(
                 'Tormenta Eléctrica',
@@ -530,7 +530,7 @@ export class SpellLibrary {
                 1, // 1 turno de cooldown
                 'aire', // Elemento aire
                 '15-25', // Daño base en área
-                'images/ui/spell-icons/mage/tormenta_electrica.png' // Icono del hechizo
+                'assets/images/ui/spell-icons/mage/tormenta_electrica.png' // Icono del hechizo
             )
         ];
     }
@@ -568,7 +568,7 @@ export class SpellLibrary {
                 0, // Sin cooldown
                 'tierra', // Elemento tierra
                 '22-28', // Daño base
-                'images/ui/spell-icons/archer/flecha_rocosa.png' // Icono del hechizo
+                'assets/images/ui/spell-icons/archer/flecha_rocosa.png' // Icono del hechizo
             ),
             new Spell(
                 'Flecha Explosiva',
@@ -608,7 +608,7 @@ export class SpellLibrary {
                 1, // 1 turno de cooldown
                 'fuego', // Elemento fuego
                 '25-32', // Daño base
-                'images/ui/spell-icons/archer/flecha_explosiva.png' // Icono del hechizo
+                'assets/images/ui/spell-icons/archer/flecha_explosiva.png' // Icono del hechizo
             ),
             new Spell(
                 'Flecha de Hielo',
@@ -641,7 +641,7 @@ export class SpellLibrary {
                 0, // Sin cooldown
                 'agua', // Elemento agua
                 '20-26', // Daño base
-                'images/ui/spell-icons/archer/flecha_de_hielo.png' // Icono del hechizo
+                'assets/images/ui/spell-icons/archer/flecha_de_hielo.png' // Icono del hechizo
             ),
             new Spell(
                 'Flecha del Viento',
@@ -674,7 +674,7 @@ export class SpellLibrary {
                 0, // Sin cooldown
                 'aire', // Elemento aire
                 '18-24', // Daño base
-                '/assets/images/ui/spell-icons/archer/flecha_del_viento.png' // Icono del hechizo
+                'assets/images/ui/spell-icons/archer/flecha_de_viento.png' // Icono del hechizo
             )
         ];
     }

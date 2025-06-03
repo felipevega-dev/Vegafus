@@ -59,6 +59,14 @@ export class SpellUI {
 
             // Icono del hechizo (si existe)
             let spellIcon = null;
+            const elementColors = {
+                tierra: 0x8B4513,
+                fuego: 0xFF4400,
+                agua: 0x00FFFF,
+                aire: 0xCCCCCC
+            };
+            const color = elementColors[realSpell.element] || 0x666666;
+
             if (realSpell.iconPath) {
                 // Verificar si la textura existe en el cache
                 const textureKey = `spell_icon_${realSpell.name.replace(/\s+/g, '_').toLowerCase()}`;
@@ -69,39 +77,35 @@ export class SpellUI {
                     spellIcon.setDisplaySize(32, 32);
                     spellIcon.setDepth(1502);
                 } else {
-                    // Intentar cargar la imagen dinámicamente
+                    // Crear círculo como fallback inmediatamente
+                    spellIcon = this.scene.add.circle(1100 - 45, y, 16, color, 0.8);
+                    spellIcon.setDepth(1502);
+
+                    // Intentar cargar la imagen dinámicamente en segundo plano
                     this.scene.load.image(textureKey, realSpell.iconPath);
                     this.scene.load.once('complete', () => {
                         if (this.scene.textures.exists(textureKey)) {
                             // Si se cargó exitosamente, reemplazar el círculo con la imagen
-                            if (spellIcon) spellIcon.destroy();
-                            spellIcon = this.scene.add.image(1100 - 45, y, textureKey);
+                            const iconX = spellIcon.x;
+                            const iconY = spellIcon.y;
+                            const iconDepth = spellIcon.depth;
+
+                            spellIcon.destroy();
+                            spellIcon = this.scene.add.image(iconX, iconY, textureKey);
                             spellIcon.setDisplaySize(32, 32);
-                            spellIcon.setDepth(1502);
+                            spellIcon.setDepth(iconDepth);
+
+                            // Actualizar la referencia en el botón
+                            const buttonIndex = this.spellButtons.findIndex(btn => btn.icon === spellIcon);
+                            if (buttonIndex >= 0) {
+                                this.spellButtons[buttonIndex].icon = spellIcon;
+                            }
                         }
                     });
                     this.scene.load.start();
-
-                    // Crear círculo temporal mientras se carga
-                    const elementColors = {
-                        tierra: 0x8B4513,
-                        fuego: 0xFF4400,
-                        agua: 0x00FFFF,
-                        aire: 0xCCCCCC
-                    };
-                    const color = elementColors[realSpell.element] || 0x666666;
-                    spellIcon = this.scene.add.circle(1100 - 45, y, 16, color, 0.8);
-                    spellIcon.setDepth(1502);
                 }
             } else {
                 // Crear círculo de color elemental como fallback
-                const elementColors = {
-                    tierra: 0x8B4513,
-                    fuego: 0xFF4400,
-                    agua: 0x00FFFF,
-                    aire: 0xCCCCCC
-                };
-                const color = elementColors[realSpell.element] || 0x666666;
                 spellIcon = this.scene.add.circle(1100 - 45, y, 16, color, 0.8);
                 spellIcon.setDepth(1502);
             }
