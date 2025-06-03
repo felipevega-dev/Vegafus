@@ -7,6 +7,7 @@ export class CharacterSelectionScene extends Phaser.Scene {
         this.userData = data.userData;
         this.characters = [];
         this.selectedCharacter = null;
+        this.deletingCharacter = false; // Bandera para evitar selección durante eliminación
     }
 
     create() {
@@ -209,6 +210,29 @@ export class CharacterSelectionScene extends Phaser.Scene {
             color: '#999999'
         }).setOrigin(0.5);
         slotData.elements.push(lastPlayedText);
+
+        // Botón de eliminar (pequeño, en la esquina superior derecha del slot)
+        const deleteButton = this.add.text(slotData.x + 65, slotData.y - 85, '🗑️', {
+            fontSize: '16px',
+            fontFamily: 'Arial',
+            backgroundColor: 'rgba(255, 0, 0, 0.8)',
+            padding: { x: 4, y: 2 }
+        }).setOrigin(0.5);
+        deleteButton.setInteractive();
+        deleteButton.on('pointerdown', () => {
+            // Evitar que se seleccione el personaje usando una bandera
+            this.deletingCharacter = true;
+            this.confirmDeleteCharacter(character);
+        });
+        deleteButton.on('pointerover', () => {
+            deleteButton.setScale(1.1);
+            deleteButton.setAlpha(1);
+        });
+        deleteButton.on('pointerout', () => {
+            deleteButton.setScale(1);
+            deleteButton.setAlpha(0.8);
+        });
+        slotData.elements.push(deleteButton);
     }
 
     fillEmptySlot(slotData) {
@@ -234,6 +258,12 @@ export class CharacterSelectionScene extends Phaser.Scene {
     }
 
     handleSlotClick(slotData) {
+        // Si se está eliminando un personaje, no hacer nada
+        if (this.deletingCharacter) {
+            this.deletingCharacter = false; // Resetear la bandera
+            return;
+        }
+
         if (slotData.character) {
             // Seleccionar personaje existente
             this.selectCharacter(slotData);
@@ -366,11 +396,167 @@ export class CharacterSelectionScene extends Phaser.Scene {
         const now = new Date();
         const diffMs = now - date;
         const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays === 0) return 'Hoy';
         if (diffDays === 1) return 'Ayer';
         if (diffDays < 7) return `${diffDays} días`;
         if (diffDays < 30) return `${Math.floor(diffDays / 7)} semanas`;
         return `${Math.floor(diffDays / 30)} meses`;
+    }
+
+    confirmDeleteCharacter(character) {
+        console.log(`🗑️ Solicitando confirmación para eliminar: ${character.name}`);
+
+        // Crear overlay semi-transparente
+        const overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.7);
+        overlay.setDepth(1000);
+
+        // Panel de confirmación
+        const confirmPanel = this.add.rectangle(640, 360, 500, 300, 0x2a2a2a, 0.95);
+        confirmPanel.setDepth(1001);
+        confirmPanel.setStrokeStyle(3, 0xff0000);
+
+        // Título de advertencia
+        const warningTitle = this.add.text(640, 280, '⚠️ ELIMINAR PERSONAJE', {
+            fontSize: '24px',
+            fontFamily: 'Arial',
+            color: '#ff0000',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(1002);
+
+        // Mensaje de confirmación
+        const confirmMessage = this.add.text(640, 330,
+            `¿Estás seguro de que quieres eliminar a "${character.name}"?\n\n` +
+            `Nivel ${character.level} ${character.class.toUpperCase()}\n\n` +
+            `Esta acción NO se puede deshacer.`, {
+            fontSize: '16px',
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            align: 'center',
+            wordWrap: { width: 450 }
+        }).setOrigin(0.5).setDepth(1002);
+
+        // Botón CANCELAR
+        const cancelButton = this.add.text(540, 420, 'CANCELAR', {
+            fontSize: '18px',
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            backgroundColor: '#666666',
+            padding: { x: 20, y: 10 }
+        }).setOrigin(0.5).setDepth(1002);
+        cancelButton.setInteractive();
+        cancelButton.on('pointerdown', () => {
+            // Cerrar modal
+            overlay.destroy();
+            confirmPanel.destroy();
+            warningTitle.destroy();
+            confirmMessage.destroy();
+            cancelButton.destroy();
+            deleteConfirmButton.destroy();
+        });
+
+        // Botón ELIMINAR
+        const deleteConfirmButton = this.add.text(740, 420, 'ELIMINAR', {
+            fontSize: '18px',
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            backgroundColor: '#cc0000',
+            padding: { x: 20, y: 10 }
+        }).setOrigin(0.5).setDepth(1002);
+        deleteConfirmButton.setInteractive();
+        deleteConfirmButton.on('pointerdown', () => {
+            // Cerrar modal
+            overlay.destroy();
+            confirmPanel.destroy();
+            warningTitle.destroy();
+            confirmMessage.destroy();
+            cancelButton.destroy();
+            deleteConfirmButton.destroy();
+
+            // Proceder con la eliminación
+            this.deleteCharacter(character);
+        });
+
+        // Efectos hover para los botones
+        cancelButton.on('pointerover', () => cancelButton.setBackgroundColor('#888888'));
+        cancelButton.on('pointerout', () => cancelButton.setBackgroundColor('#666666'));
+
+        deleteConfirmButton.on('pointerover', () => deleteConfirmButton.setBackgroundColor('#ff0000'));
+        deleteConfirmButton.on('pointerout', () => deleteConfirmButton.setBackgroundColor('#cc0000'));
+    }
+
+    async deleteCharacter(character) {
+        try {
+            console.log(`🗑️ Eliminando personaje: ${character.name}`);
+
+            // Mostrar mensaje de eliminación
+            const deletingMessage = this.add.text(640, 520, 'Eliminando personaje...', {
+                fontSize: '18px',
+                fontFamily: 'Arial',
+                color: '#ffff00',
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                padding: { x: 15, y: 8 }
+            }).setOrigin(0.5);
+
+            // Llamar al API para eliminar el personaje
+            const response = await fetch(`http://localhost:3000/api/characters/${character.id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                deletingMessage.setText('✅ Personaje eliminado exitosamente');
+                deletingMessage.setColor('#00ff00');
+
+                console.log(`✅ Personaje ${character.name} eliminado exitosamente`);
+
+                // Si el personaje eliminado estaba seleccionado, deseleccionar
+                if (this.selectedCharacter && this.selectedCharacter.character.id === character.id) {
+                    this.selectedCharacter = null;
+                    if (this.playButton) {
+                        this.playButton.setAlpha(0.5);
+                        this.playButton.removeInteractive();
+                    }
+                }
+
+                // Recargar la lista de personajes
+                await this.loadCharacters();
+
+                // Eliminar mensaje después de 2 segundos
+                this.time.delayedCall(2000, () => {
+                    deletingMessage.destroy();
+                });
+
+            } else {
+                const errorData = await response.json();
+                deletingMessage.setText(`❌ Error: ${errorData.message || 'No se pudo eliminar el personaje'}`);
+                deletingMessage.setColor('#ff0000');
+
+                console.error('❌ Error eliminando personaje:', errorData);
+
+                // Eliminar mensaje después de 3 segundos
+                this.time.delayedCall(3000, () => {
+                    deletingMessage.destroy();
+                });
+            }
+
+        } catch (error) {
+            console.error('❌ Error eliminando personaje:', error);
+
+            const errorMessage = this.add.text(640, 520, '❌ Error de conexión', {
+                fontSize: '18px',
+                fontFamily: 'Arial',
+                color: '#ff0000',
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                padding: { x: 15, y: 8 }
+            }).setOrigin(0.5);
+
+            this.time.delayedCall(3000, () => {
+                errorMessage.destroy();
+            });
+        }
     }
 }
