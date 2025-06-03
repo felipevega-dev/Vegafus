@@ -184,11 +184,39 @@ export class ExplorationMapRefactored extends Phaser.Scene {
             this.experienceBar.updatePlayer(this.player);
         }
 
-        // Crear panel lateral derecho si no existe
+        // Verificar si el panel lateral derecho existe y es válido
+        let needsRecreation = false;
         if (!this.rightSidePanel) {
-            console.log('🎮 Creando panel lateral derecho...');
+            needsRecreation = true;
+            console.log('🎮 Panel lateral derecho no existe, necesita creación');
+        } else {
+            // Verificar si los elementos del panel siguen existiendo
+            try {
+                if (!this.rightSidePanel.mainPanel || !this.rightSidePanel.mainPanel.scene) {
+                    needsRecreation = true;
+                    console.log('🎮 Panel lateral derecho corrupto, necesita recreación');
+                }
+            } catch (error) {
+                needsRecreation = true;
+                console.log('🎮 Error verificando panel lateral derecho:', error);
+            }
+        }
+
+        // Crear o recrear panel lateral derecho si es necesario
+        if (needsRecreation) {
+            console.log('🎮 Creando/recreando panel lateral derecho...');
             console.log('🎮 Escena actual:', this.scene.key);
             console.log('🎮 Jugador disponible:', !!this.player);
+
+            // Limpiar panel anterior si existe
+            if (this.rightSidePanel) {
+                try {
+                    this.rightSidePanel.destroy();
+                } catch (error) {
+                    console.log('🎮 Error limpiando panel anterior:', error);
+                }
+            }
+
             this.rightSidePanel = new RightSidePanel(this, this.player);
             console.log('🎮 Panel lateral derecho creado:', !!this.rightSidePanel);
         }
@@ -206,21 +234,23 @@ export class ExplorationMapRefactored extends Phaser.Scene {
     refreshUIAfterCombat() {
         console.log('🔄 Refrescando UI después del combate...');
 
-        // Actualizar UI del jugador
+        // Forzar recreación del panel lateral derecho después del combate
+        console.log('🎮 Forzando recreación del panel lateral derecho después del combate...');
+        if (this.rightSidePanel) {
+            try {
+                this.rightSidePanel.destroy();
+            } catch (error) {
+                console.log('🎮 Error destruyendo panel anterior:', error);
+            }
+            this.rightSidePanel = null;
+        }
+
+        // Actualizar UI del jugador (esto recreará el panel)
         this.updatePlayerUI();
 
         // Refrescar panel de inventario si existe
         if (this.inventoryPanel) {
             this.inventoryPanel.refreshInventory();
-        }
-
-        // Recrear panel lateral derecho si no existe o actualizarlo
-        if (!this.rightSidePanel) {
-            console.log('🎮 Recreando panel lateral derecho después del combate...');
-            this.rightSidePanel = new RightSidePanel(this, this.player);
-        } else {
-            console.log('🎮 Actualizando panel lateral derecho después del combate...');
-            this.rightSidePanel.player = this.player; // Actualizar referencia del jugador
         }
 
         console.log('✅ UI refrescada correctamente');

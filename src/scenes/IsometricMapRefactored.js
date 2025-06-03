@@ -67,30 +67,32 @@ export class IsometricMapRefactored extends Combat {
     // Sobrescribir el manejo de victoria para volver al mapa de exploración original
     handleVictory() {
         console.log('¡Victoria en combate isométrico!');
-        
+
         // Mostrar resumen de combate
         this.showCombatSummary(true);
-        
+
         // Volver al mapa de exploración después de un delay
         this.time.delayedCall(3000, () => {
             this.scene.start('ExplorationMapRefactored', {
                 userData: this.userData,
-                characterId: this.currentCharacterId
+                characterId: this.currentCharacterId,
+                comingFromCombat: true // Bandera para indicar que viene del combate
             });
         });
     }
 
     handleDefeat() {
         console.log('Derrota en combate isométrico...');
-        
+
         // Mostrar resumen de combate
         this.showCombatSummary(false);
-        
+
         // Volver al mapa de exploración después de un delay
         this.time.delayedCall(3000, () => {
             this.scene.start('ExplorationMapRefactored', {
                 userData: this.userData,
-                characterId: this.currentCharacterId
+                characterId: this.currentCharacterId,
+                comingFromCombat: true // Bandera para indicar que viene del combate
             });
         });
     }
@@ -144,7 +146,8 @@ export class IsometricMapRefactored extends Combat {
         continueButton.on('pointerdown', () => {
             this.scene.start('ExplorationMapRefactored', {
                 userData: this.userData,
-                characterId: this.currentCharacterId
+                characterId: this.currentCharacterId,
+                comingFromCombat: true // Bandera para indicar que viene del combate
             });
         });
 
