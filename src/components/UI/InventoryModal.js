@@ -398,16 +398,29 @@ export class InventoryModal {
     }
 
     equipSelectedItem() {
-        if (!this.selectedItem || !this.selectedItem.itemInfo) return;
+        console.log('🎯 Intentando equipar item seleccionado:', this.selectedItem);
 
-        const itemData = this.selectedItem.itemInfo;
-        const equipSlot = this.getEquipmentSlotForItem(itemData);
-
-        if (!equipSlot) {
-            console.log('No se puede equipar este item');
+        if (!this.selectedItem) {
+            console.log('❌ No hay item seleccionado');
             return;
         }
 
+        if (!this.selectedItem.itemInfo) {
+            console.log('❌ Item no tiene información:', this.selectedItem);
+            return;
+        }
+
+        const itemData = this.selectedItem.itemInfo;
+        console.log('📋 Datos del item:', itemData);
+
+        const equipSlot = this.getEquipmentSlotForItem(itemData);
+
+        if (!equipSlot) {
+            console.log('❌ No se puede equipar este item - slot no válido');
+            return;
+        }
+
+        console.log('⚔️ Equipando item en slot:', equipSlot);
         // Llamar al backend para equipar el item
         this.equipItem(this.selectedItem, equipSlot);
     }
@@ -420,7 +433,15 @@ export class InventoryModal {
     }
 
     getEquipmentSlotForItem(itemData) {
-        // Mapear tipos de items a slots de equipamiento
+        console.log('🔍 Determinando slot para item:', itemData);
+
+        // Verificar que es un item de equipamiento
+        if (itemData.type !== 'equipment') {
+            console.log('❌ Item no es de tipo equipment:', itemData.type);
+            return null;
+        }
+
+        // Mapear subtipos de items a slots de equipamiento
         const slotMapping = {
             'helmet': 'helmet',
             'armor': 'armor',
@@ -432,10 +453,15 @@ export class InventoryModal {
             'ring': 'ring1' // Por defecto ring1, luego verificar si está ocupado
         };
 
-        let targetSlot = slotMapping[itemData.subtype] || slotMapping[itemData.type];
+        let targetSlot = slotMapping[itemData.subtype];
+
+        if (!targetSlot) {
+            console.log('❌ No se encontró slot para subtype:', itemData.subtype);
+            return null;
+        }
 
         // Para anillos, verificar cuál slot está disponible
-        if (itemData.subtype === 'ring' || itemData.type === 'ring') {
+        if (itemData.subtype === 'ring') {
             if (!this.equipmentSlots.ring1.equipped) {
                 targetSlot = 'ring1';
             } else if (!this.equipmentSlots.ring2.equipped) {
@@ -445,35 +471,47 @@ export class InventoryModal {
             }
         }
 
+        console.log('✅ Slot determinado:', targetSlot);
         return targetSlot;
     }
 
     // API calls para equipar/desequipar
     async equipItem(item, slotType) {
         try {
+            console.log('🌐 Enviando petición de equipar al backend...');
+            console.log('📦 Item:', item);
+            console.log('🎯 Slot:', slotType);
+            console.log('👤 Player ID:', this.player.id);
+
+            const requestBody = {
+                itemId: item.itemId,
+                slot: slotType
+            };
+            console.log('📤 Request body:', requestBody);
+
             const response = await fetch(`/api/equipment/${this.player.id}/equip`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 },
-                body: JSON.stringify({
-                    itemId: item.itemId,
-                    slot: slotType
-                })
+                body: JSON.stringify(requestBody)
             });
 
+            console.log('📥 Response status:', response.status);
             const result = await response.json();
+            console.log('📥 Response data:', result);
+
             if (result.success) {
                 // Actualizar el estado local
                 this.updateEquipmentDisplay();
                 this.refreshInventory();
-                console.log('Item equipado exitosamente');
+                console.log('✅ Item equipado exitosamente');
             } else {
-                console.error('Error equipando item:', result.message);
+                console.error('❌ Error equipando item:', result.message);
             }
         } catch (error) {
-            console.error('Error en la petición de equipar:', error);
+            console.error('❌ Error en la petición de equipar:', error);
         }
     }
 
@@ -636,12 +674,51 @@ export class InventoryModal {
         this.updateEquipmentDisplay();
         this.selectedItem = null;
         this.updateActionButtons();
+
+        // Bloquear movimiento del jugador
+        this.disablePlayerMovement();
     }
 
     hide() {
         this.isVisible = false;
         this.elements.forEach(element => element.setVisible(false));
         this.selectedItem = null;
+
+        // Restaurar movimiento del jugador
+        this.enablePlayerMovement();
+    }
+
+    disablePlayerMovement() {
+        // Deshabilitar input de mouse para movimiento
+        if (this.scene.input) {
+            this.scene.input.off('pointerdown', this.scene.handleMouseClick, this.scene);
+
+            // Si existe un sistema de movimiento, deshabilitarlo
+            if (this.scene.movementSystem) {
+                this.scene.movementSystem.disabled = true;
+            }
+
+            // Marcar que el movimiento está bloqueado
+            this.scene.movementBlocked = true;
+        }
+    }
+
+    enablePlayerMovement() {
+        // Rehabilitar input de mouse para movimiento
+        if (this.scene.input) {
+            // Reconectar el handler de mouse según el tipo de escena
+            if (this.scene.handleMouseClick) {
+                this.scene.input.on('pointerdown', this.scene.handleMouseClick, this.scene);
+            }
+
+            // Si existe un sistema de movimiento, habilitarlo
+            if (this.scene.movementSystem) {
+                this.scene.movementSystem.disabled = false;
+            }
+
+            // Desmarcar que el movimiento está bloqueado
+            this.scene.movementBlocked = false;
+        }
     }
 
     destroy() {

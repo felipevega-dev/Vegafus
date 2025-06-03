@@ -83,6 +83,11 @@ export class MovementSystem {
     }
 
     handleMouseClick(pointer) {
+        // Verificar si el movimiento está bloqueado (por UI abierta)
+        if (this.disabled || this.scene.movementBlocked) {
+            return;
+        }
+
         const gridPos = this.grid.worldToGrid(pointer.worldX, pointer.worldY);
 
         if (gridPos.x < 0 || gridPos.y < 0 || gridPos.x >= this.grid.width || gridPos.y >= this.grid.height) {
