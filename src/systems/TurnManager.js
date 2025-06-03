@@ -1,4 +1,5 @@
 import { CombatSummary } from './CombatSummary.js';
+import { DropSystem } from './DropSystem.js';
 
 export class TurnManager {
     constructor(scene) {
@@ -17,6 +18,9 @@ export class TurnManager {
         // Sistema de resumen de combate
         this.combatSummary = new CombatSummary(scene);
         this.defeatedEnemies = [];
+
+        // Sistema de drops
+        this.dropSystem = new DropSystem(scene);
 
         // UI del sistema de turnos
         this.createTurnUI();
@@ -182,7 +186,10 @@ export class TurnManager {
         // Verificar victoria (todos los enemigos muertos)
         if (aliveEnemies.length === 0) {
             this.gameState = 'victory';
-            this.handleVictory(player);
+            // Llamada asíncrona sin await para no bloquear el flujo
+            this.handleVictory(player).catch(error => {
+                console.error('Error manejando victoria:', error);
+            });
             return true;
         }
 
@@ -190,7 +197,7 @@ export class TurnManager {
     }
 
     // Manejar victoria del jugador
-    handleVictory(player) {
+    async handleVictory(player) {
         // Calcular experiencia ganada
         const experienceGained = CombatSummary.calculateExperience(this.defeatedEnemies);
 
@@ -202,8 +209,17 @@ export class TurnManager {
             this.updateTurnUI();
         }
 
-        // Mostrar resumen de combate
-        this.combatSummary.showSummary(this.defeatedEnemies, experienceGained, player);
+        // Calcular y aplicar drops (ahora asíncrono)
+        const drops = await this.dropSystem.calculateCombatDrops(player, this.defeatedEnemies);
+        await this.dropSystem.applyDropsToPlayer(player, drops);
+
+        console.log('🎉 ¡Victoria! Drops obtenidos:', drops);
+
+        // Actualizar UI del jugador después de aplicar drops
+        this.updateTurnUI();
+
+        // Mostrar resumen de combate (ahora incluirá los drops)
+        this.combatSummary.showSummary(this.defeatedEnemies, experienceGained, player, drops);
     }
 
     // Registrar enemigo derrotado

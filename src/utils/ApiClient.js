@@ -142,6 +142,95 @@ export class ApiClient {
         return await this.request(`/game/load-game/${characterId}`);
     }
 
+    // ===== MÉTODOS DE ITEMS =====
+
+    /**
+     * Obtener todos los items
+     */
+    async getItems() {
+        return await this.request('/items');
+    }
+
+    /**
+     * Obtener item específico
+     */
+    async getItem(itemId) {
+        return await this.request(`/items/${itemId}`);
+    }
+
+    /**
+     * Obtener items por tipo
+     */
+    async getItemsByType(type) {
+        return await this.request(`/items/type/${type}`);
+    }
+
+    /**
+     * Obtener items por rareza
+     */
+    async getItemsByRarity(rarity) {
+        return await this.request(`/items/rarity/${rarity}`);
+    }
+
+    // ===== MÉTODOS DE INVENTARIO =====
+
+    /**
+     * Obtener inventario del personaje
+     */
+    async getInventory(characterId) {
+        return await this.request(`/inventory/${characterId}`);
+    }
+
+    /**
+     * Agregar item al inventario
+     */
+    async addItemToInventory(characterId, itemId, quantity = 1) {
+        return await this.request(`/inventory/${characterId}/items`, {
+            method: 'POST',
+            body: JSON.stringify({ itemId, quantity })
+        });
+    }
+
+    /**
+     * Remover item del inventario
+     */
+    async removeItemFromInventory(characterId, itemId, quantity = 1) {
+        return await this.request(`/inventory/${characterId}/items/${itemId}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ quantity })
+        });
+    }
+
+    /**
+     * Agregar kamas al personaje
+     */
+    async addKamas(characterId, amount) {
+        return await this.request(`/inventory/${characterId}/kamas`, {
+            method: 'POST',
+            body: JSON.stringify({ amount })
+        });
+    }
+
+    /**
+     * Gastar kamas
+     */
+    async spendKamas(characterId, amount) {
+        return await this.request(`/inventory/${characterId}/kamas/spend`, {
+            method: 'POST',
+            body: JSON.stringify({ amount })
+        });
+    }
+
+    /**
+     * Aplicar drops de combate
+     */
+    async applyDrops(characterId, drops) {
+        return await this.request(`/inventory/${characterId}/drops`, {
+            method: 'POST',
+            body: JSON.stringify({ drops })
+        });
+    }
+
     /**
      * Establecer token de autenticación
      */

@@ -177,9 +177,122 @@ export class RightSidePanel {
         this.scene.input.keyboard.on('keydown-H', () => this.showSpellsModal());
     }
 
-    showInventoryModal() {
+    async showInventoryModal() {
         console.log('🎒 Abriendo modal de inventario...');
+
+        // Mostrar loading mientras carga
+        this.createInventoryLoadingModal();
+
+        // Cargar inventario desde backend
+        await this.loadInventoryFromBackend();
+
+        // Crear modal con datos actualizados
+        this.hideInventoryModal(); // Limpiar loading
         this.createInventoryModal();
+    }
+
+    createInventoryLoadingModal() {
+        const colors = LayoutConfig.COLORS;
+        const depths = LayoutConfig.DEPTHS;
+
+        // Fondo semi-transparente
+        this.inventoryModalBg = this.scene.add.rectangle(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2,
+            LayoutConfig.GAME_WIDTH,
+            LayoutConfig.GAME_HEIGHT,
+            0x000000,
+            0.7
+        );
+        this.inventoryModalBg.setDepth(depths.MODAL_BACKGROUND);
+        this.inventoryModalBg.setInteractive();
+
+        // Panel del inventario
+        this.inventoryModalPanel = this.scene.add.rectangle(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2,
+            500,
+            400,
+            colors.PANEL_BG,
+            0.95
+        );
+        this.inventoryModalPanel.setDepth(depths.MODAL_ELEMENTS);
+        this.inventoryModalPanel.setStrokeStyle(3, colors.PANEL_BORDER);
+
+        // Título del modal
+        this.inventoryModalTitle = this.scene.add.text(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2 - 170,
+            'INVENTARIO',
+            LayoutUtils.createTextStyle('TITLE', { color: colors.TEXT_ACCENT })
+        );
+        this.inventoryModalTitle.setOrigin(0.5);
+        this.inventoryModalTitle.setDepth(depths.MODAL_ELEMENTS + 1);
+
+        // Mensaje de carga
+        this.inventoryModalContent = this.scene.add.text(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2,
+            'Cargando inventario...\n\n⏳',
+            LayoutUtils.createTextStyle('BODY', {
+                color: colors.TEXT_PRIMARY,
+                align: 'center'
+            })
+        );
+        this.inventoryModalContent.setOrigin(0.5);
+        this.inventoryModalContent.setDepth(depths.MODAL_ELEMENTS + 1);
+
+        // Guardar referencias
+        this.inventoryModalElements = [
+            this.inventoryModalBg,
+            this.inventoryModalPanel,
+            this.inventoryModalTitle,
+            this.inventoryModalContent
+        ];
+    }
+
+    async loadInventoryFromBackend() {
+        try {
+            const characterId = this.scene.registry.get('currentCharacterId');
+            if (!characterId) {
+                console.warn('⚠️ No se encontró ID del personaje');
+                return;
+            }
+
+            const { apiClient } = await import('../../utils/ApiClient.js');
+            const response = await apiClient.getInventory(characterId);
+
+            if (response.success) {
+                // Actualizar datos del jugador con la información del backend
+                this.player.kamas = response.data.kamas || 0;
+
+                // Convertir inventario del backend al formato local
+                this.player.inventory = response.data.inventory.map(invItem => {
+                    const item = {
+                        id: invItem.itemId,
+                        name: invItem.itemInfo?.name || invItem.itemId,
+                        type: invItem.itemInfo?.type || 'unknown',
+                        rarity: invItem.itemInfo?.rarity || 'common',
+                        value: invItem.itemInfo?.value || 0,
+                        description: invItem.itemInfo?.description || '',
+                        quantity: invItem.quantity,
+                        stackable: invItem.itemInfo?.stackable || false,
+                        maxStack: invItem.itemInfo?.maxStack || 1,
+                        obtainedAt: invItem.obtainedAt
+                    };
+                    return item;
+                });
+
+                console.log('✅ Inventario cargado desde backend:', {
+                    kamas: this.player.kamas,
+                    items: this.player.inventory.length
+                });
+            } else {
+                console.error('❌ Error cargando inventario:', response.message);
+            }
+        } catch (error) {
+            console.error('❌ Error conectando con backend para inventario:', error);
+        }
     }
 
     createInventoryModal() {
@@ -196,8 +309,7 @@ export class RightSidePanel {
             0.7
         );
         this.inventoryModalBg.setDepth(depths.MODAL_BACKGROUND);
-        this.inventoryModalBg.setInteractive();
-        this.inventoryModalBg.on('pointerdown', () => this.hideInventoryModal());
+        this.inventoryModalBg.setInteractive(); // Solo para bloquear clics que pasen a través
 
         // Panel del inventario
         this.inventoryModalPanel = this.scene.add.rectangle(
@@ -223,14 +335,22 @@ export class RightSidePanel {
 
         // Contenido del inventario
         const items = this.player.inventory || [];
-        let inventoryText = '';
+        const kamas = this.player.kamas || 0;
+        const prospection = this.player.getProspection ? this.player.getProspection() : 100;
+
+        let inventoryText = `💰 Kamas: ${kamas}\n🔍 Prospección: ${prospection}%\n\n`;
 
         if (items.length === 0) {
-            inventoryText = 'Tu inventario está vacío.\n\nAquí aparecerán los objetos\nque encuentres en tu aventura.\n\n• Armas\n• Armaduras\n• Pociones\n• Objetos especiales';
+            inventoryText += 'Tu inventario está vacío.\n\nAquí aparecerán los objetos\nque encuentres en tu aventura.\n\n• Armas\n• Armaduras\n• Pociones\n• Objetos especiales';
         } else {
-            inventoryText = `Objetos: ${items.length}\n\n`;
+            inventoryText += `📦 Objetos: ${items.length}\n\n`;
             items.forEach((item, index) => {
-                inventoryText += `${index + 1}. ${item.name}\n`;
+                const rarityColor = this.getItemRaritySymbol(item.rarity);
+                inventoryText += `${index + 1}. ${rarityColor} ${item.name}`;
+                if (item.stackable && item.quantity > 1) {
+                    inventoryText += ` (x${item.quantity})`;
+                }
+                inventoryText += '\n';
                 if (item.description) {
                     inventoryText += `   ${item.description}\n`;
                 }
@@ -280,6 +400,17 @@ export class RightSidePanel {
 
         // Atajo ESC para cerrar
         this.scene.input.keyboard.once('keydown-ESC', () => this.hideInventoryModal());
+    }
+
+    getItemRaritySymbol(rarity) {
+        switch (rarity) {
+            case 'common': return '⚪';
+            case 'uncommon': return '🟢';
+            case 'rare': return '🔵';
+            case 'epic': return '🟣';
+            case 'legendary': return '🟠';
+            default: return '⚪';
+        }
     }
 
     hideInventoryModal() {

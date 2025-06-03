@@ -6,14 +6,15 @@ export class CombatSummary {
     }
 
     // Mostrar resumen de combate
-    showSummary(defeatedEnemies, experienceGained, player) {
+    showSummary(defeatedEnemies, experienceGained, player, drops = null) {
         if (this.isVisible) return;
-        
+
         this.isVisible = true;
         this.defeatedEnemies = defeatedEnemies;
         this.experienceGained = experienceGained;
         this.player = player;
-        
+        this.drops = drops;
+
         this.createSummaryWindow();
     }
 
@@ -114,7 +115,15 @@ export class CombatSummary {
         totalExpText.setDepth(2002);
         this.summaryElements.push(totalExpText);
 
-        yPos += 40;
+        yPos += 30;
+
+        // Mostrar drops si existen
+        if (this.drops) {
+            this.addDropsSection(yPos);
+            yPos += this.calculateDropsSectionHeight() + 20;
+        } else {
+            yPos += 10;
+        }
 
         // Botón de continuar
         const continueButton = this.scene.add.rectangle(640, yPos, 200, 40, 0x006600, 1);
@@ -175,6 +184,105 @@ export class CombatSummary {
                 return 'Esqueleto Rápido';
             default:
                 return 'Enemigo Desconocido';
+        }
+    }
+
+    // Agregar sección de drops al resumen
+    addDropsSection(startY) {
+        let yPos = startY;
+
+        // Título de drops
+        const dropsTitle = this.scene.add.text(640, yPos, 'Botín Obtenido:', {
+            fontSize: '16px',
+            fontFamily: 'Arial',
+            color: '#ffaa00',
+            fontStyle: 'bold'
+        });
+        dropsTitle.setOrigin(0.5);
+        dropsTitle.setDepth(2002);
+        this.summaryElements.push(dropsTitle);
+        yPos += 25;
+
+        // Mostrar prospección del jugador
+        const prospection = this.player.getProspection();
+        const prospectionText = this.scene.add.text(640, yPos, `Prospección: ${prospection}%`, {
+            fontSize: '12px',
+            fontFamily: 'Arial',
+            color: '#aaaaaa'
+        });
+        prospectionText.setOrigin(0.5);
+        prospectionText.setDepth(2002);
+        this.summaryElements.push(prospectionText);
+        yPos += 20;
+
+        // Mostrar dinero obtenido
+        if (this.drops.kamas > 0) {
+            const kamasText = this.scene.add.text(640, yPos, `💰 +${this.drops.kamas} Kamas`, {
+                fontSize: '14px',
+                fontFamily: 'Arial',
+                color: '#ffff00'
+            });
+            kamasText.setOrigin(0.5);
+            kamasText.setDepth(2002);
+            this.summaryElements.push(kamasText);
+            yPos += 20;
+        }
+
+        // Mostrar items obtenidos
+        if (this.drops.items && this.drops.items.length > 0) {
+            this.drops.items.forEach(item => {
+                const itemColor = this.getItemRarityColor(item.rarity);
+                const itemText = this.scene.add.text(640, yPos, `📦 ${item.name}`, {
+                    fontSize: '14px',
+                    fontFamily: 'Arial',
+                    color: itemColor
+                });
+                itemText.setOrigin(0.5);
+                itemText.setDepth(2002);
+                this.summaryElements.push(itemText);
+                yPos += 20;
+            });
+        }
+
+        // Si no hay drops
+        if (this.drops.kamas === 0 && (!this.drops.items || this.drops.items.length === 0)) {
+            const noDropsText = this.scene.add.text(640, yPos, 'No se obtuvo botín', {
+                fontSize: '14px',
+                fontFamily: 'Arial',
+                color: '#888888'
+            });
+            noDropsText.setOrigin(0.5);
+            noDropsText.setDepth(2002);
+            this.summaryElements.push(noDropsText);
+        }
+    }
+
+    // Calcular altura de la sección de drops
+    calculateDropsSectionHeight() {
+        if (!this.drops) return 0;
+
+        let height = 45; // Título + prospección
+
+        if (this.drops.kamas > 0) height += 20;
+        if (this.drops.items && this.drops.items.length > 0) {
+            height += this.drops.items.length * 20;
+        }
+        if (this.drops.kamas === 0 && (!this.drops.items || this.drops.items.length === 0)) {
+            height += 20; // "No se obtuvo botín"
+        }
+
+        return height;
+    }
+
+    // Obtener color según rareza del item
+    getItemRarityColor(rarity) {
+        switch (rarity) {
+            case 'common': return '#ffffff';
+            case 'uncommon': return '#00ff00';
+            case 'rare': return '#0088ff';
+            case 'epic': return '#aa00ff';
+            case 'legendary': return '#ff8800';
+            default: return '#ffffff';
         }
     }
 
@@ -242,7 +350,7 @@ export class CombatSummary {
         this.scene.time.delayedCall(1500, () => {
             // Pasar datos del usuario para mantener la sesión
             const userData = this.scene.registry.get('userData');
-            this.scene.scene.start('ExplorationMap', { user: userData });
+            this.scene.scene.start('ExplorationMapRefactored', { user: userData });
         });
     }
 
@@ -272,9 +380,14 @@ export class CombatSummary {
                 x: this.player.gridX,
                 y: this.player.gridY
             },
+            // Datos de dinero e inventario
+            kamas: this.player.kamas,
+            inventory: this.player.inventory,
+            characteristics: this.player.characteristics,
             // Marcar que viene de combate para indicar ganancia de experiencia
             combatResult: 'victory',
-            enemiesDefeated: this.defeatedEnemies.length
+            enemiesDefeated: this.defeatedEnemies.length,
+            dropsObtained: this.drops
         };
 
         await apiClient.saveProgress(characterId, gameData);

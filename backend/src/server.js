@@ -45,8 +45,16 @@ app.use(express.urlencoded({ extended: true }));
 
 // Conexión a MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/dofus-game')
-    .then(() => {
+    .then(async () => {
         console.log('✅ Conectado a MongoDB');
+
+        // Inicializar items estáticos
+        try {
+            const ItemService = require('./services/ItemService');
+            await ItemService.initializeItems();
+        } catch (error) {
+            console.error('❌ Error inicializando items:', error);
+        }
     })
     .catch((error) => {
         console.error('❌ Error conectando a MongoDB:', error);
@@ -89,6 +97,24 @@ try {
     console.log('✅ Rutas de juego cargadas');
 } catch (error) {
     console.error('❌ Error cargando rutas de juego:', error.message);
+    process.exit(1);
+}
+
+try {
+    console.log('📦 Cargando rutas de items...');
+    app.use('/api/items', require('./routes/items'));
+    console.log('✅ Rutas de items cargadas');
+} catch (error) {
+    console.error('❌ Error cargando rutas de items:', error.message);
+    process.exit(1);
+}
+
+try {
+    console.log('🎒 Cargando rutas de inventario...');
+    app.use('/api/inventory', require('./routes/inventory'));
+    console.log('✅ Rutas de inventario cargadas');
+} catch (error) {
+    console.error('❌ Error cargando rutas de inventario:', error.message);
     process.exit(1);
 }
 

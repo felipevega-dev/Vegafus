@@ -67,15 +67,22 @@ const characterSchema = new mongoose.Schema({
         airePercent: { type: Number, default: 0 }
     },
     capitalPoints: { type: Number, default: 0 }, // Puntos disponibles para distribuir
+
+    // Sistema de dinero
+    kamas: { type: Number, default: 0 }, // Dinero del juego
+
     position: {
         x: { type: Number, default: 5 },
         y: { type: Number, default: 10 },
         mapId: { type: String, default: 'exploration' }
     },
+
+    // Inventario mejorado
     inventory: [{
-        itemId: String,
-        quantity: { type: Number, default: 1 },
-        equipped: { type: Boolean, default: false }
+        itemId: { type: String, required: true }, // Referencia al item estático
+        quantity: { type: Number, default: 1, min: 1 },
+        equipped: { type: Boolean, default: false },
+        obtainedAt: { type: Date, default: Date.now }
     }],
     spells: [{
         spellId: String,
@@ -154,7 +161,9 @@ characterSchema.methods.toGameJSON = function() {
         resistances: this.resistances,
         damageBonus: this.damageBonus,
         capitalPoints: this.capitalPoints,
+        kamas: this.kamas, // Incluir dinero
         position: this.position,
+        inventory: this.inventory, // Incluir inventario
         spells: this.spells,
         spellPoints: this.spellPoints,
         gameStats: this.gameStats,

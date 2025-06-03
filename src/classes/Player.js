@@ -26,6 +26,11 @@ export class Player {
         };
         this.capitalPoints = 0;
 
+        // Sistema de dinero e inventario
+        this.kamas = 0; // Dinero del juego
+        this.inventory = []; // Items del inventario
+        this.maxInventorySize = 60; // Tamaño máximo del inventario
+
         // Sistema de puntos de hechizo (como Dofus)
         this.spellPoints = 0; // Puntos disponibles para subir hechizos (se carga desde backend)
 
@@ -535,5 +540,29 @@ export class Player {
 
         console.log(`🔮 ${spell.name} bajó a nivel ${spell.level}. Punto de hechizo recuperado.`);
         return { success: true, message: `${spell.name} bajó a nivel ${spell.level}` };
+    }
+
+    // Calcular prospección total
+    getProspection() {
+        const baseProspection = 100; // Prospección base
+        const aguaBonus = Math.floor(this.characteristics.agua / 10); // 1 prospección por cada 10 de agua
+        // TODO: Agregar bonus de equipamiento cuando se implemente
+        return baseProspection + aguaBonus;
+    }
+
+    // Agregar dinero
+    addKamas(amount) {
+        this.kamas += amount;
+        console.log(`💰 +${amount} kamas (Total: ${this.kamas})`);
+    }
+
+    // Gastar dinero
+    spendKamas(amount) {
+        if (this.kamas >= amount) {
+            this.kamas -= amount;
+            console.log(`💰 -${amount} kamas (Total: ${this.kamas})`);
+            return true;
+        }
+        return false;
     }
 }

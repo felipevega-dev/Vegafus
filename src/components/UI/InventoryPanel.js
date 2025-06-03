@@ -21,6 +21,7 @@ export class InventoryPanel {
         this.background = this.scene.add.rectangle(640, 360, 600, 500, 0x1a1a1a, 0.95);
         this.background.setDepth(2000);
         this.background.setStrokeStyle(3, 0x444444);
+        this.background.setInteractive(); // Hacer interactivo para evitar clics que pasen a través
         this.elements.push(this.background);
 
         // Título

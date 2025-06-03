@@ -30,16 +30,27 @@ export class PlayerInfoPanel {
         this.playerInfo.setDepth(1001);
         this.elements.push(this.playerInfo);
 
-        // Información de puntos de capital
-        this.capitalPointsInfo = this.scene.add.text(this.x, this.y - 5, '', {
+        // Información de dinero y prospección
+        this.kamasInfo = this.scene.add.text(this.x, this.y - 5, '', {
             fontSize: '11px',
             fontFamily: 'Arial',
-            color: '#cccccc',
+            color: '#ffff00',
             align: 'center'
         });
-        this.capitalPointsInfo.setOrigin(0.5);
-        this.capitalPointsInfo.setDepth(1001);
-        this.elements.push(this.capitalPointsInfo);
+        this.kamasInfo.setOrigin(0.5);
+        this.kamasInfo.setDepth(1001);
+        this.elements.push(this.kamasInfo);
+
+        // Información de prospección
+        this.prospectionInfo = this.scene.add.text(this.x, this.y + 10, '', {
+            fontSize: '10px',
+            fontFamily: 'Arial',
+            color: '#aaaaaa',
+            align: 'center'
+        });
+        this.prospectionInfo.setOrigin(0.5);
+        this.prospectionInfo.setDepth(1001);
+        this.elements.push(this.prospectionInfo);
     }
 
     updatePlayer(player) {
@@ -58,10 +69,15 @@ export class PlayerInfoPanel {
             this.playerInfo.setText(`HP: ${this.player.currentHP}/${this.player.maxHP} | Nivel: ${this.player.level}`);
         }
 
-        // Actualizar información de puntos de capital
-        if (this.capitalPointsInfo && this.capitalPointsInfo.setText) {
-            this.capitalPointsInfo.setText(`💰 Puntos de capital: ${this.player.capitalPoints}`);
-            this.capitalPointsInfo.setColor(this.player.capitalPoints > 0 ? '#ffff00' : '#cccccc');
+        // Actualizar información de dinero
+        if (this.kamasInfo && this.kamasInfo.setText) {
+            this.kamasInfo.setText(`💰 ${this.player.kamas || 0} Kamas`);
+        }
+
+        // Actualizar información de prospección
+        if (this.prospectionInfo && this.prospectionInfo.setText) {
+            const prospection = this.player.getProspection ? this.player.getProspection() : 100;
+            this.prospectionInfo.setText(`🔍 Prospección: ${prospection}%`);
         }
     }
 
