@@ -84,16 +84,18 @@ export class SpellSystem {
             }
         }
 
-        // Mostrar información del hechizo
+        // Mostrar información detallada del hechizo
+        const damageEstimate = spell.getDamageEstimate(this.player);
         const spellInfo = this.scene.add.text(
             this.player.sprite.x, this.player.sprite.y - 60,
-            `${spell.name} - Rango: ${spell.range}`,
+            `${spell.name} (Nv.${spell.level})\nDaño: ${damageEstimate} | PA: ${spell.actionPointCost} | Rango: ${spell.range}`,
             {
-                fontSize: '12px',
+                fontSize: '11px',
                 fontFamily: 'Arial',
                 color: '#ffffff',
-                backgroundColor: '#000000',
-                padding: { x: 6, y: 3 }
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                padding: { x: 8, y: 4 },
+                align: 'center'
             }
         );
         spellInfo.setOrigin(0.5);

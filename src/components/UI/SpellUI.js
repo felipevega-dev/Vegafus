@@ -39,22 +39,27 @@ export class SpellUI {
             if (button.background) button.background.destroy();
             if (button.text) button.text.destroy();
             if (button.info) button.info.destroy();
+            if (button.damage) button.damage.destroy();
         });
         this.spellButtons = [];
 
         const spells = this.player.getSpellsInfo();
 
         spells.forEach((spell, index) => {
-            const y = 120 + (index * 60);
+            const y = 120 + (index * 70); // Aumentar espacio para más información
 
-            // Fondo del botón
-            const buttonBg = this.scene.add.rectangle(1100, y, 140, 50, 0x333333, 0.9);
+            // Fondo del botón (más alto)
+            const buttonBg = this.scene.add.rectangle(1100, y, 140, 60, 0x333333, 0.9);
             buttonBg.setDepth(1501);
             buttonBg.setInteractive();
 
-            // Texto del hechizo
-            const buttonText = this.scene.add.text(1100, y - 10, spell.name, {
-                fontSize: '12px',
+            // Obtener el hechizo real para información detallada
+            const realSpell = this.player.spells[index];
+
+            // Texto del hechizo con nivel
+            const spellNameWithLevel = `${spell.name} (Nv.${realSpell.level})`;
+            const buttonText = this.scene.add.text(1100, y - 15, spellNameWithLevel, {
+                fontSize: '11px',
                 fontFamily: 'Arial',
                 color: spell.canCast ? '#ffffff' : '#666666',
                 fontStyle: 'bold'
@@ -62,14 +67,24 @@ export class SpellUI {
             buttonText.setOrigin(0.5);
             buttonText.setDepth(1502);
 
-            // Información adicional
-            const infoText = this.scene.add.text(1100, y + 10, `PA:${spell.actionPointCost} Rango:${spell.range}`, {
-                fontSize: '10px',
+            // Información de PA y Rango
+            const infoText = this.scene.add.text(1100, y, `PA:${spell.actionPointCost} Rango:${spell.range}`, {
+                fontSize: '9px',
                 fontFamily: 'Arial',
                 color: spell.canCast ? '#ffff00' : '#444444'
             });
             infoText.setOrigin(0.5);
             infoText.setDepth(1502);
+
+            // Estimación de daño
+            const damageEstimate = realSpell.getDamageEstimate(this.player);
+            const damageText = this.scene.add.text(1100, y + 12, `Daño: ${damageEstimate}`, {
+                fontSize: '9px',
+                fontFamily: 'Arial',
+                color: spell.canCast ? '#00ff00' : '#444444'
+            });
+            damageText.setOrigin(0.5);
+            damageText.setDepth(1502);
 
             // Evento de clic
             buttonBg.on('pointerdown', () => {
@@ -78,22 +93,31 @@ export class SpellUI {
                 }
             });
 
-            // Efecto hover
+            // Efecto hover con tooltip
+            let tooltip = null;
             buttonBg.on('pointerover', () => {
                 if (spell.canCast) {
                     buttonBg.setFillStyle(0x555555);
                 }
+                // Mostrar tooltip
+                tooltip = this.showSpellTooltip(index, buttonBg.x + 80, buttonBg.y - 50);
             });
 
             buttonBg.on('pointerout', () => {
                 const isSelected = this.spellSystem.getSelectedSpellIndex() === index;
                 buttonBg.setFillStyle(isSelected ? 0x666600 : 0x333333);
+                // Ocultar tooltip
+                if (tooltip) {
+                    tooltip.destroy();
+                    tooltip = null;
+                }
             });
 
             this.spellButtons.push({
                 background: buttonBg,
                 text: buttonText,
                 info: infoText,
+                damage: damageText,
                 spell: spell,
                 index: index
             });
@@ -104,6 +128,7 @@ export class SpellUI {
             this.elements.push(button.background);
             this.elements.push(button.text);
             this.elements.push(button.info);
+            this.elements.push(button.damage);
         });
     }
 
@@ -126,22 +151,28 @@ export class SpellUI {
         if (spellIndex < 0 || spellIndex >= this.player.spells.length) return;
 
         const spell = this.player.spells[spellIndex];
-        
-        const tooltip = this.scene.add.text(x, y, 
-            `${spell.name}\n` +
-            `Daño: ${spell.damage}\n` +
-            `Elemento: ${spell.element}\n` +
-            `Rango: ${spell.range}\n` +
-            `PA: ${spell.actionPointCost}\n` +
-            `Cooldown: ${spell.cooldown}`, {
-            fontSize: '11px',
+        const damageEstimate = spell.getDamageEstimate(this.player);
+        const scaledDamage = spell.getScaledDamage();
+        const elementBonus = this.player.characteristics[spell.element] || 0;
+
+        const tooltip = this.scene.add.text(x, y,
+            `${spell.name} (Nivel ${spell.level})\n` +
+            `Elemento: ${spell.element.charAt(0).toUpperCase() + spell.element.slice(1)}\n` +
+            `Daño base: ${scaledDamage}\n` +
+            `Daño estimado: ${damageEstimate}\n` +
+            `Bono elemental: +${elementBonus}%\n` +
+            `PA: ${spell.actionPointCost} | Rango: ${spell.range}\n` +
+            `Cooldown: ${spell.cooldown} turnos\n` +
+            `${spell.description}`, {
+            fontSize: '10px',
             fontFamily: 'Arial',
             color: '#ffffff',
             backgroundColor: 'rgba(0, 0, 0, 0.9)',
-            padding: { x: 8, y: 6 }
+            padding: { x: 8, y: 6 },
+            wordWrap: { width: 200 }
         });
         tooltip.setDepth(1600);
-        
+
         return tooltip;
     }
 

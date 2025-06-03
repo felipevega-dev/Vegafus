@@ -154,6 +154,85 @@ export class Spell {
             this.currentCooldown--;
         }
     }
+
+    // Función auxiliar para obtener daño base escalado por nivel
+    getRandomScaledDamage() {
+        const scaledDamageRange = this.getScaledDamage();
+        if (scaledDamageRange.includes('-')) {
+            const [min, max] = scaledDamageRange.split('-').map(Number);
+            return Phaser.Math.Between(min, max);
+        } else {
+            return Number(scaledDamageRange);
+        }
+    }
+
+    // Obtener estimación de daño final con características del caster
+    getDamageEstimate(caster) {
+        if (!this.baseDamage || !caster.characteristics) {
+            return 'N/A';
+        }
+
+        const scaledDamageRange = this.getScaledDamage();
+        let minDamage, maxDamage;
+
+        if (scaledDamageRange.includes('-')) {
+            [minDamage, maxDamage] = scaledDamageRange.split('-').map(Number);
+        } else {
+            minDamage = maxDamage = Number(scaledDamageRange);
+        }
+
+        // Aplicar característica elemental
+        const elementBonus = caster.characteristics[this.element] || 0;
+        if (elementBonus > 0) {
+            minDamage = Math.floor(minDamage * (1 + elementBonus / 100));
+            maxDamage = Math.floor(maxDamage * (1 + elementBonus / 100));
+        }
+
+        return minDamage === maxDamage ? `${minDamage}` : `${minDamage}-${maxDamage}`;
+    }
+
+    // Mostrar daño flotante en la pantalla
+    showFloatingDamage(scene, target, damage, element) {
+        if (!target || !target.sprite) return;
+
+        // Colores por elemento
+        const elementColors = {
+            tierra: '#8B4513',
+            fuego: '#FF4400',
+            agua: '#00FFFF',
+            aire: '#CCCCCC'
+        };
+
+        const color = elementColors[element] || '#FFFFFF';
+
+        // Crear texto de daño flotante
+        const damageText = scene.add.text(
+            target.sprite.x, target.sprite.y - 20,
+            `-${damage}`,
+            {
+                fontSize: '16px',
+                fontFamily: 'Arial',
+                color: color,
+                fontStyle: 'bold',
+                stroke: '#000000',
+                strokeThickness: 2
+            }
+        );
+        damageText.setOrigin(0.5);
+        damageText.setDepth(1000);
+
+        // Animación de daño flotante
+        scene.tweens.add({
+            targets: damageText,
+            y: damageText.y - 40,
+            alpha: 0,
+            duration: 1000,
+            ease: 'Power2',
+            onComplete: () => {
+                damageText.destroy();
+            }
+        });
+    }
 }
 
 // Mapeo de IDs del backend a nombres del frontend
@@ -189,10 +268,14 @@ export class SpellLibrary {
                 (caster, targetX, targetY) => {
                     const target = caster.scene.grid.cells[targetY][targetX].object;
                     if (target && target.constructor.name === 'Enemy') {
-                        const baseDamage = Math.floor(caster.attack * 1.5) + Phaser.Math.Between(-3, 3);
                         const spell = caster.spells.find(s => s.name === 'Golpe Telúrico');
+                        // Usar daño escalado por nivel del hechizo
+                        const baseDamage = spell.getRandomScaledDamage();
                         const finalDamage = spell.calculateDamage(baseDamage, caster);
                         target.takeDamage(finalDamage);
+
+                        // Mostrar daño flotante
+                        spell.showFloatingDamage(caster.scene, target, finalDamage, spell.element);
 
                         // Efecto visual de tierra
                         const effect = caster.scene.add.circle(
@@ -217,10 +300,14 @@ export class SpellLibrary {
                 (caster, targetX, targetY) => {
                     const target = caster.scene.grid.cells[targetY][targetX].object;
                     if (target && target.constructor.name === 'Enemy') {
-                        const baseDamage = caster.attack + 10 + Phaser.Math.Between(-2, 2);
                         const spell = caster.spells.find(s => s.name === 'Llama Ardiente');
+                        // Usar daño escalado por nivel del hechizo
+                        const baseDamage = spell.getRandomScaledDamage();
                         const finalDamage = spell.calculateDamage(baseDamage, caster);
                         target.takeDamage(finalDamage);
+
+                        // Mostrar daño flotante
+                        spell.showFloatingDamage(caster.scene, target, finalDamage, spell.element);
 
                         // Efecto visual de fuego
                         const effect = caster.scene.add.circle(
@@ -245,8 +332,9 @@ export class SpellLibrary {
                 (caster, targetX, targetY) => {
                     const target = caster.scene.grid.cells[targetY][targetX].object;
                     if (target && target.constructor.name === 'Enemy') {
-                        const baseDamage = caster.attack + 8 + Phaser.Math.Between(-2, 2);
                         const spell = caster.spells.find(s => s.name === 'Tormenta Helada');
+                        // Usar daño escalado por nivel del hechizo
+                        const baseDamage = spell.getRandomScaledDamage();
                         const finalDamage = spell.calculateDamage(baseDamage, caster);
                         target.takeDamage(finalDamage);
 
@@ -273,8 +361,9 @@ export class SpellLibrary {
                 (caster, targetX, targetY) => {
                     const target = caster.scene.grid.cells[targetY][targetX].object;
                     if (target && target.constructor.name === 'Enemy') {
-                        const baseDamage = caster.attack + 6 + Phaser.Math.Between(-2, 2);
                         const spell = caster.spells.find(s => s.name === 'Viento Cortante');
+                        // Usar daño escalado por nivel del hechizo
+                        const baseDamage = spell.getRandomScaledDamage();
                         const finalDamage = spell.calculateDamage(baseDamage, caster);
                         target.takeDamage(finalDamage);
 
@@ -310,9 +399,11 @@ export class SpellLibrary {
                             if (x >= 0 && y >= 0 && x < caster.scene.grid.width && y < caster.scene.grid.height) {
                                 const target = caster.scene.grid.cells[y][x].object;
                                 if (target && target.constructor.name === 'Enemy') {
-                                    const distance = Math.abs(x - targetX) + Math.abs(y - targetY);
-                                    const baseDamage = Math.floor((35 - distance * 5)) + Phaser.Math.Between(-3, 3);
                                     const spell = caster.spells.find(s => s.name === 'Terremoto');
+                                    const distance = Math.abs(x - targetX) + Math.abs(y - targetY);
+                                    // Usar daño escalado por nivel, reducido por distancia
+                                    let baseDamage = spell.getRandomScaledDamage();
+                                    baseDamage = Math.floor(baseDamage * (1 - distance * 0.15)); // Reducir 15% por celda de distancia
                                     const finalDamage = spell.calculateDamage(baseDamage, caster);
                                     if (finalDamage > 0) {
                                         target.takeDamage(finalDamage);
@@ -334,7 +425,8 @@ export class SpellLibrary {
                     }
                 },
                 2, // 2 turnos de cooldown
-                'tierra' // Elemento tierra
+                'tierra', // Elemento tierra
+                '30-40' // Daño base en área
             ),
             new Spell(
                 'Bola de Fuego',
@@ -344,8 +436,9 @@ export class SpellLibrary {
                 (caster, targetX, targetY) => {
                     const target = caster.scene.grid.cells[targetY][targetX].object;
                     if (target && target.constructor.name === 'Enemy') {
-                        const baseDamage = 30 + Phaser.Math.Between(-5, 5);
                         const spell = caster.spells.find(s => s.name === 'Bola de Fuego');
+                        // Usar daño escalado por nivel del hechizo
+                        const baseDamage = spell.getRandomScaledDamage();
                         const finalDamage = spell.calculateDamage(baseDamage, caster);
                         target.takeDamage(finalDamage);
 
@@ -361,7 +454,8 @@ export class SpellLibrary {
                     }
                 },
                 1, // 1 turno de cooldown
-                'fuego' // Elemento fuego
+                'fuego', // Elemento fuego
+                '25-35' // Daño base
             ),
             new Spell(
                 'Rayo de Hielo',
@@ -371,8 +465,9 @@ export class SpellLibrary {
                 (caster, targetX, targetY) => {
                     const target = caster.scene.grid.cells[targetY][targetX].object;
                     if (target && target.constructor.name === 'Enemy') {
-                        const baseDamage = 25 + Phaser.Math.Between(-3, 3);
                         const spell = caster.spells.find(s => s.name === 'Rayo de Hielo');
+                        // Usar daño escalado por nivel del hechizo
+                        const baseDamage = spell.getRandomScaledDamage();
                         const finalDamage = spell.calculateDamage(baseDamage, caster);
                         target.takeDamage(finalDamage);
 
@@ -388,7 +483,8 @@ export class SpellLibrary {
                     }
                 },
                 0, // Sin cooldown
-                'agua' // Elemento agua
+                'agua', // Elemento agua
+                '20-30' // Daño base
             ),
             new Spell(
                 'Tormenta Eléctrica',
@@ -402,8 +498,9 @@ export class SpellLibrary {
                             if (x >= 0 && y >= 0 && x < caster.scene.grid.width && y < caster.scene.grid.height) {
                                 const target = caster.scene.grid.cells[y][x].object;
                                 if (target && target.constructor.name === 'Enemy') {
-                                    const baseDamage = 20 + Phaser.Math.Between(-3, 3);
                                     const spell = caster.spells.find(s => s.name === 'Tormenta Eléctrica');
+                                    // Usar daño escalado por nivel del hechizo
+                                    const baseDamage = spell.getRandomScaledDamage();
                                     const finalDamage = spell.calculateDamage(baseDamage, caster);
                                     target.takeDamage(finalDamage);
                                 }
@@ -423,7 +520,8 @@ export class SpellLibrary {
                     }
                 },
                 1, // 1 turno de cooldown
-                'aire' // Elemento aire
+                'aire', // Elemento aire
+                '15-25' // Daño base en área
             )
         ];
     }
@@ -438,8 +536,9 @@ export class SpellLibrary {
                 (caster, targetX, targetY) => {
                     const target = caster.scene.grid.cells[targetY][targetX].object;
                     if (target && target.constructor.name === 'Enemy') {
-                        const baseDamage = caster.attack + 12 + Phaser.Math.Between(-2, 2);
                         const spell = caster.spells.find(s => s.name === 'Flecha Rocosa');
+                        // Usar daño escalado por nivel del hechizo
+                        const baseDamage = spell.getRandomScaledDamage();
                         const finalDamage = spell.calculateDamage(baseDamage, caster);
                         target.takeDamage(finalDamage);
 
@@ -458,7 +557,8 @@ export class SpellLibrary {
                     }
                 },
                 0, // Sin cooldown
-                'tierra' // Elemento tierra
+                'tierra', // Elemento tierra
+                '22-28' // Daño base
             ),
             new Spell(
                 'Flecha Explosiva',
@@ -468,8 +568,9 @@ export class SpellLibrary {
                 (caster, targetX, targetY) => {
                     const target = caster.scene.grid.cells[targetY][targetX].object;
                     if (target && target.constructor.name === 'Enemy') {
-                        const baseDamage = caster.attack + 15 + Phaser.Math.Between(-3, 3);
                         const spell = caster.spells.find(s => s.name === 'Flecha Explosiva');
+                        // Usar daño escalado por nivel del hechizo
+                        const baseDamage = spell.getRandomScaledDamage();
                         const finalDamage = spell.calculateDamage(baseDamage, caster);
                         target.takeDamage(finalDamage);
 
@@ -495,7 +596,8 @@ export class SpellLibrary {
                     }
                 },
                 1, // 1 turno de cooldown
-                'fuego' // Elemento fuego
+                'fuego', // Elemento fuego
+                '25-32' // Daño base
             ),
             new Spell(
                 'Flecha de Hielo',
@@ -505,8 +607,9 @@ export class SpellLibrary {
                 (caster, targetX, targetY) => {
                     const target = caster.scene.grid.cells[targetY][targetX].object;
                     if (target && target.constructor.name === 'Enemy') {
-                        const baseDamage = caster.attack + 10 + Phaser.Math.Between(-2, 2);
                         const spell = caster.spells.find(s => s.name === 'Flecha de Hielo');
+                        // Usar daño escalado por nivel del hechizo
+                        const baseDamage = spell.getRandomScaledDamage();
                         const finalDamage = spell.calculateDamage(baseDamage, caster);
                         target.takeDamage(finalDamage);
 
@@ -525,7 +628,8 @@ export class SpellLibrary {
                     }
                 },
                 0, // Sin cooldown
-                'agua' // Elemento agua
+                'agua', // Elemento agua
+                '20-26' // Daño base
             ),
             new Spell(
                 'Flecha del Viento',
@@ -535,8 +639,9 @@ export class SpellLibrary {
                 (caster, targetX, targetY) => {
                     const target = caster.scene.grid.cells[targetY][targetX].object;
                     if (target && target.constructor.name === 'Enemy') {
-                        const baseDamage = caster.attack + 8 + Phaser.Math.Between(-2, 2);
                         const spell = caster.spells.find(s => s.name === 'Flecha del Viento');
+                        // Usar daño escalado por nivel del hechizo
+                        const baseDamage = spell.getRandomScaledDamage();
                         const finalDamage = spell.calculateDamage(baseDamage, caster);
                         target.takeDamage(finalDamage);
 
@@ -555,7 +660,8 @@ export class SpellLibrary {
                     }
                 },
                 0, // Sin cooldown
-                'aire' // Elemento aire
+                'aire', // Elemento aire
+                '18-24' // Daño base
             )
         ];
     }
