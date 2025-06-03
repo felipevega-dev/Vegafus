@@ -315,10 +315,10 @@ export class RightSidePanel {
             }
 
             console.log('🔄 Cargando equipamiento desde backend...');
-            const response = await fetch(`/api/equipment/${characterId}`, {
+            const response = await fetch(`http://localhost:3000/api/equipment/${characterId}`, {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
                     'Content-Type': 'application/json'
                 }
             });

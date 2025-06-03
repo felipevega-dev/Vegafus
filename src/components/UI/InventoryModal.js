@@ -481,7 +481,25 @@ export class InventoryModal {
             console.log('🌐 Enviando petición de equipar al backend...');
             console.log('📦 Item:', item);
             console.log('🎯 Slot:', slotType);
-            console.log('👤 Player ID:', this.player.id);
+
+            // Obtener el ID del personaje desde el registry de la escena
+            const characterId = this.scene.registry.get('currentCharacterId') || this.player.id;
+            console.log('👤 Character ID:', characterId);
+
+            if (!characterId) {
+                console.error('❌ No se encontró ID del personaje');
+                return;
+            }
+
+            // Verificar token de autenticación
+            const authToken = localStorage.getItem('authToken');
+            console.log('🔑 Token disponible:', authToken ? 'Sí' : 'No');
+            console.log('🔑 Token (primeros 20 chars):', authToken ? authToken.substring(0, 20) + '...' : 'N/A');
+
+            if (!authToken) {
+                console.error('❌ No se encontró token de autenticación');
+                return;
+            }
 
             const requestBody = {
                 itemId: item.itemId,
@@ -489,11 +507,11 @@ export class InventoryModal {
             };
             console.log('📤 Request body:', requestBody);
 
-            const response = await fetch(`/api/equipment/${this.player.id}/equip`, {
+            const response = await fetch(`http://localhost:3000/api/equipment/${characterId}/equip`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
                 },
                 body: JSON.stringify(requestBody)
             });
@@ -517,11 +535,19 @@ export class InventoryModal {
 
     async unequipItem(slotType) {
         try {
-            const response = await fetch(`/api/equipment/${this.player.id}/unequip`, {
+            // Obtener el ID del personaje desde el registry de la escena
+            const characterId = this.scene.registry.get('currentCharacterId') || this.player.id;
+
+            if (!characterId) {
+                console.error('❌ No se encontró ID del personaje para desequipar');
+                return;
+            }
+
+            const response = await fetch(`http://localhost:3000/api/equipment/${characterId}/unequip`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
                 },
                 body: JSON.stringify({
                     slot: slotType
