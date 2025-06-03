@@ -21,6 +21,9 @@ export class IsometricMap extends Phaser.Scene {
             frameWidth: 64,
             frameHeight: 64
         });
+
+        // Cargar UI de hechizos
+        this.load.image('menuvertical', 'assets/images/ui/menu/menuvertical.png');
     }
 
     async create() {

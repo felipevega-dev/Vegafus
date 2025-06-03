@@ -41,23 +41,43 @@ export class SpellUI {
             if (button.info) button.info.destroy();
             if (button.damage) button.damage.destroy();
             if (button.icon) button.icon.destroy();
+            if (button.slot) button.slot.destroy();
         });
         this.spellButtons = [];
+
+        // Crear el fondo del menú vertical
+        if (this.menuBackground) this.menuBackground.destroy();
+        this.menuBackground = this.scene.add.image(1150, 200, 'menuvertical');
+        this.menuBackground.setDepth(1500);
+        this.menuBackground.setScale(0.3); // Mucho más pequeño
+        this.elements.push(this.menuBackground);
 
         const spells = this.player.getSpellsInfo();
 
         spells.forEach((spell, index) => {
-            const y = 120 + (index * 70); // Aumentar espacio para más información
+            // Calcular posición de las casillas en el menú vertical
+            // El menú tiene 2 columnas y múltiples filas
+            const col = index % 2; // 0 = izquierda, 1 = derecha
+            const row = Math.floor(index / 2); // Fila
 
-            // Fondo del botón (más alto)
-            const buttonBg = this.scene.add.rectangle(1100, y, 140, 60, 0x333333, 0.9);
+            // Posiciones base del menú (ajustar según la imagen)
+            const baseX = 1100;
+            const baseY = 150; // Empezar más arriba
+            const slotSize = 60; // Tamaño de cada casilla
+            const spacing = 65; // Espaciado entre casillas
+
+            const x = baseX + (col - 0.5) * spacing; // -0.5 para centrar
+            const y = baseY + row * spacing;
+
+            // Crear área invisible para interacción (sobre la casilla)
+            const buttonBg = this.scene.add.rectangle(x, y, slotSize, slotSize, 0x000000, 0);
             buttonBg.setDepth(1501);
             buttonBg.setInteractive();
 
             // Obtener el hechizo real para información detallada
             const realSpell = this.player.spells[index];
 
-            // Icono del hechizo (si existe)
+            // Icono del hechizo centrado en la casilla
             let spellIcon = null;
             const elementColors = {
                 tierra: 0x8B4513,
@@ -73,12 +93,12 @@ export class SpellUI {
 
                 if (this.scene.textures.exists(textureKey)) {
                     // Si la textura ya está cargada, usarla
-                    spellIcon = this.scene.add.image(1100 - 45, y, textureKey);
-                    spellIcon.setDisplaySize(32, 32);
+                    spellIcon = this.scene.add.image(x, y, textureKey);
+                    spellIcon.setDisplaySize(40, 40); // Tamaño más grande para las casillas
                     spellIcon.setDepth(1502);
                 } else {
                     // Crear círculo como fallback inmediatamente
-                    spellIcon = this.scene.add.circle(1100 - 45, y, 16, color, 0.8);
+                    spellIcon = this.scene.add.circle(x, y, 20, color, 0.8);
                     spellIcon.setDepth(1502);
 
                     // Intentar cargar la imagen dinámicamente en segundo plano
@@ -92,7 +112,7 @@ export class SpellUI {
 
                             spellIcon.destroy();
                             spellIcon = this.scene.add.image(iconX, iconY, textureKey);
-                            spellIcon.setDisplaySize(32, 32);
+                            spellIcon.setDisplaySize(40, 40);
                             spellIcon.setDepth(iconDepth);
 
                             // Actualizar la referencia en el botón
@@ -106,39 +126,17 @@ export class SpellUI {
                 }
             } else {
                 // Crear círculo de color elemental como fallback
-                spellIcon = this.scene.add.circle(1100 - 45, y, 16, color, 0.8);
+                spellIcon = this.scene.add.circle(x, y, 20, color, 0.8);
                 spellIcon.setDepth(1502);
             }
 
-            // Texto del hechizo con nivel (ajustado para el icono)
-            const spellNameWithLevel = `${spell.name} (Nv.${realSpell.level})`;
-            const buttonText = this.scene.add.text(1100 - 10, y - 15, spellNameWithLevel, {
-                fontSize: '10px',
-                fontFamily: 'Arial',
-                color: spell.canCast ? '#ffffff' : '#666666',
-                fontStyle: 'bold'
-            });
-            buttonText.setOrigin(0.5);
-            buttonText.setDepth(1502);
-
-            // Información de PA y Rango (ajustado para el icono)
-            const infoText = this.scene.add.text(1100 - 10, y, `PA:${spell.actionPointCost} Rango:${spell.range}`, {
-                fontSize: '9px',
-                fontFamily: 'Arial',
-                color: spell.canCast ? '#ffff00' : '#444444'
-            });
-            infoText.setOrigin(0.5);
-            infoText.setDepth(1502);
-
-            // Estimación de daño (ajustado para el icono)
-            const damageEstimate = realSpell.getDamageEstimate(this.player);
-            const damageText = this.scene.add.text(1100 - 10, y + 12, `Daño: ${damageEstimate}`, {
-                fontSize: '9px',
-                fontFamily: 'Arial',
-                color: spell.canCast ? '#00ff00' : '#444444'
-            });
-            damageText.setOrigin(0.5);
-            damageText.setDepth(1502);
+            // Efecto visual de disponibilidad del hechizo
+            if (!spell.canCast) {
+                // Overlay gris para hechizos no disponibles
+                const disabledOverlay = this.scene.add.rectangle(x, y, slotSize, slotSize, 0x000000, 0.6);
+                disabledOverlay.setDepth(1503);
+                this.elements.push(disabledOverlay);
+            }
 
             // Evento de clic
             buttonBg.on('pointerdown', () => {
@@ -149,17 +147,24 @@ export class SpellUI {
 
             // Efecto hover con tooltip
             let tooltip = null;
+            let hoverOverlay = null;
+
             buttonBg.on('pointerover', () => {
                 if (spell.canCast) {
-                    buttonBg.setFillStyle(0x555555);
+                    // Crear overlay de hover dorado
+                    hoverOverlay = this.scene.add.rectangle(x, y, slotSize, slotSize, 0xFFD700, 0.3);
+                    hoverOverlay.setDepth(1503);
                 }
                 // Mostrar tooltip
-                tooltip = this.showSpellTooltip(index, buttonBg.x + 80, buttonBg.y - 50);
+                tooltip = this.showSpellTooltip(index, x + 80, y - 50);
             });
 
             buttonBg.on('pointerout', () => {
-                const isSelected = this.spellSystem.getSelectedSpellIndex() === index;
-                buttonBg.setFillStyle(isSelected ? 0x666600 : 0x333333);
+                // Limpiar overlay de hover
+                if (hoverOverlay) {
+                    hoverOverlay.destroy();
+                    hoverOverlay = null;
+                }
                 // Ocultar tooltip
                 if (tooltip) {
                     tooltip.destroy();
@@ -169,21 +174,17 @@ export class SpellUI {
 
             this.spellButtons.push({
                 background: buttonBg,
-                text: buttonText,
-                info: infoText,
-                damage: damageText,
                 icon: spellIcon,
                 spell: spell,
-                index: index
+                index: index,
+                x: x,
+                y: y
             });
         });
 
         // Agregar botones a elementos para cleanup
         this.spellButtons.forEach(button => {
             this.elements.push(button.background);
-            this.elements.push(button.text);
-            this.elements.push(button.info);
-            this.elements.push(button.damage);
             if (button.icon) this.elements.push(button.icon);
         });
     }
@@ -193,13 +194,21 @@ export class SpellUI {
     }
 
     updateSelectedSpell(selectedIndex) {
-        this.spellButtons.forEach((button, index) => {
-            if (index === selectedIndex) {
-                button.background.setFillStyle(0x666600); // Amarillo oscuro para seleccionado
-            } else {
-                button.background.setFillStyle(0x333333);
-            }
-        });
+        // Limpiar overlays de selección anteriores
+        if (this.selectedOverlay) {
+            this.selectedOverlay.destroy();
+            this.selectedOverlay = null;
+        }
+
+        // Crear overlay de selección para el hechizo seleccionado
+        if (selectedIndex >= 0 && selectedIndex < this.spellButtons.length) {
+            const button = this.spellButtons[selectedIndex];
+            this.selectedOverlay = this.scene.add.rectangle(
+                button.x, button.y, 60, 60, 0x00FF00, 0.4
+            );
+            this.selectedOverlay.setDepth(1503);
+            this.elements.push(this.selectedOverlay);
+        }
     }
 
     // Mostrar información detallada de un hechizo
@@ -289,6 +298,18 @@ export class SpellUI {
     }
 
     destroy() {
+        // Limpiar overlay de selección
+        if (this.selectedOverlay) {
+            this.selectedOverlay.destroy();
+            this.selectedOverlay = null;
+        }
+
+        // Limpiar fondo del menú
+        if (this.menuBackground) {
+            this.menuBackground.destroy();
+            this.menuBackground = null;
+        }
+
         this.elements.forEach(element => {
             if (element && element.destroy) {
                 element.destroy();
