@@ -24,7 +24,7 @@ export class Player {
             vida: 0,
             sabiduria: 0
         };
-        this.capitalPoints = 0;
+        this.capitalPoints = 10; // Valor por defecto, se sobrescribirá desde el backend
 
         // Sistema de dinero e inventario
         this.kamas = 0; // Dinero del juego
@@ -73,9 +73,7 @@ export class Player {
         }
         this.selectedSpell = null;
 
-        // Sistema de inventario
-        this.inventory = [];
-        this.maxInventorySize = 20;
+        // El inventario ya se inicializó arriba, no duplicar
 
         // Crear sprite del jugador
         this.createSprite();

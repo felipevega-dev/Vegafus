@@ -33,8 +33,12 @@ export class CharacteristicsScene extends Phaser.Scene {
 
         console.log('🎯 CharacteristicsScene inicializada:');
         console.log('   - userData:', !!this.userData);
-        console.log('   - characterId:', !!this.characterId);
+        console.log('   - characterId:', this.characterId);
         console.log('   - player:', !!this.player);
+        if (this.player) {
+            console.log('   - player.capitalPoints:', this.player.capitalPoints);
+            console.log('   - player.characteristics:', this.player.characteristics);
+        }
     }
 
     create() {
@@ -355,6 +359,11 @@ export class CharacteristicsScene extends Phaser.Scene {
                 capitalPoints: this.player.capitalPoints,
                 stats: this.player.stats // Incluir stats actualizados
             };
+
+            console.log('📤 Guardando características:');
+            console.log('   - characterId:', this.characterId);
+            console.log('   - capitalPoints:', gameData.capitalPoints);
+            console.log('   - characteristics:', gameData.characteristics);
 
             await apiClient.saveProgress(this.characterId, gameData);
 

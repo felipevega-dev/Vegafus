@@ -363,10 +363,12 @@ export class CombatSummary {
 
             // Pasar datos del usuario para mantener la sesión
             const userData = this.scene.registry.get('userData');
+            const characterId = this.scene.registry.get('currentCharacterId');
 
             // Cambiar a la escena de exploración
             this.scene.scene.start('ExplorationMapRefactored', {
-                user: userData,
+                userData: userData,
+                characterId: characterId,
                 comingFromCombat: true // Indicar que viene del combate
             });
         });

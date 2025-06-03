@@ -211,6 +211,12 @@ router.put('/:characterId', async (req, res) => {
             'resistances', 'damageBonus', 'spells', 'spellPoints', 'kamas'
         ];
 
+        // Debug: Log de datos recibidos
+        console.log('📥 Datos recibidos para actualizar personaje:');
+        console.log('   - capitalPoints:', req.body.capitalPoints);
+        console.log('   - characteristics:', req.body.characteristics);
+        console.log('   - experience:', req.body.experience);
+
         // Verificar si se está actualizando la experiencia para manejar level ups
         const oldExperience = character.experience;
         let experienceUpdated = false;
@@ -224,6 +230,16 @@ router.put('/:characterId', async (req, res) => {
                 } else if (field === 'stats') {
                     // Manejar stats de forma especial para evitar sobrescribir campos existentes
                     character.stats = { ...character.stats, ...req.body[field] };
+                } else if (field === 'characteristics') {
+                    // Manejar características de forma especial para evitar sobrescribir campos existentes
+                    character.characteristics = { ...character.characteristics, ...req.body[field] };
+                    console.log('🔧 Características actualizadas:', character.characteristics);
+                } else if (field === 'resistances') {
+                    // Manejar resistencias de forma especial
+                    character.resistances = { ...character.resistances, ...req.body[field] };
+                } else if (field === 'damageBonus') {
+                    // Manejar bonos de daño de forma especial
+                    character.damageBonus = { ...character.damageBonus, ...req.body[field] };
                 } else if (field === 'inventory') {
                     // Transformar inventario para asegurar formato correcto
                     const inventory = req.body[field];

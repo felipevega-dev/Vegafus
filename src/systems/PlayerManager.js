@@ -131,6 +131,7 @@ export class PlayerManager {
             this.player.characteristics = character.characteristics || {
                 tierra: 0, fuego: 0, agua: 0, aire: 0, vida: 0, sabiduria: 0
             };
+            console.log('🔧 Características aplicadas:', this.player.characteristics);
 
             // Cargar hechizos desde el backend
             if (character.spells && character.spells.length > 0) {
@@ -140,6 +141,7 @@ export class PlayerManager {
             }
             this.player.capitalPoints = character.capitalPoints || 0;
             this.player.spellPoints = character.spellPoints || 0;
+            console.log('💰 Puntos aplicados - Capital:', this.player.capitalPoints, 'Hechizo:', this.player.spellPoints);
 
             // Aplicar resistencias
             this.player.resistances = character.resistances || {
