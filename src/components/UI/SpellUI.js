@@ -47,7 +47,6 @@ export class SpellUI {
             // Posiciones base del menú (ajustadas para calzar con las casillas del UI)
             const baseX = 1150; // Posición X central
             const baseY = 232; // Ajustado para calzar con las casillas
-            const slotSize = 40; // Casillas aún más grandes
             const spacingX = 70; // Espaciado horizontal entre casillas
             const spacingY = 70; // Espaciado vertical entre casillas
 
@@ -117,8 +116,8 @@ export class SpellUI {
 
             // Efecto visual de disponibilidad del hechizo
             if (!spell.canCast) {
-                // Overlay gris para hechizos no disponibles
-                const disabledOverlay = this.scene.add.rectangle(x, y, slotSize, slotSize, 0x000000, 0.6);
+                // Overlay negro para hechizos no disponibles que cubra todo el icono
+                const disabledOverlay = this.scene.add.rectangle(x, y, 65, 65, 0x000000, 0.6);
                 disabledOverlay.setDepth(1503);
                 this.elements.push(disabledOverlay);
             }

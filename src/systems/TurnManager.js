@@ -76,18 +76,23 @@ export class TurnManager {
             if (entity.endTurn) entity.endTurn();
         });
 
+        // Determinar si es turno del jugador o enemigo
+        this.isPlayerTurn = currentEntity.constructor.name === 'Player';
+
         // Iniciar turno de la entidad actual
         if (currentEntity.startTurn) {
             currentEntity.startTurn();
         }
 
-        // Determinar si es turno del jugador o enemigo
-        this.isPlayerTurn = currentEntity.constructor.name === 'Player';
-
         // Configurar temporizador solo para el jugador
         if (this.isPlayerTurn) {
             this.timeRemaining = this.turnTimeLimit;
             this.startTurnTimer();
+
+            // Actualizar UI de hechizos DESPUÉS de que se haya ejecutado startTurn()
+            if (this.scene.updateSpellButtons) {
+                this.scene.updateSpellButtons();
+            }
         }
 
         // Si es turno del enemigo, ejecutar IA después de un breve delay
