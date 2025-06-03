@@ -110,7 +110,7 @@ export class SpellUI {
                 }
             } else {
                 // Crear círculo de color elemental como fallback
-                spellIcon = this.scene.add.circle(x, y, 15, color, 0.8); // Círculo más grande
+                spellIcon = this.scene.add.circle(x, y, 30, color, 0.8); // Círculo mucho más grande
                 spellIcon.setDepth(1502);
             }
 
@@ -188,7 +188,7 @@ export class SpellUI {
         if (selectedIndex >= 0 && selectedIndex < this.spellButtons.length) {
             const button = this.spellButtons[selectedIndex];
             this.selectedOverlay = this.scene.add.rectangle(
-                button.x, button.y, 35, 35, 0x00FF00, 0.4 // Tamaño actualizado
+                button.x, button.y, 40, 40, 0x00FF00, 0.4 // Tamaño actualizado para iconos grandes
             );
             this.selectedOverlay.setDepth(1503);
             this.elements.push(this.selectedOverlay);

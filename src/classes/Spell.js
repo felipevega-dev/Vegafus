@@ -568,7 +568,7 @@ export class SpellLibrary {
                 0, // Sin cooldown
                 'tierra', // Elemento tierra
                 '22-28', // Daño base
-                'assets/images/ui/spell-icons/archer/flecha_rocosa.png' // Icono del hechizo
+                'assets/images/ui/spell-icons/archer/flecha_magica.png' // Icono del hechizo
             ),
             new Spell(
                 'Flecha Explosiva',
@@ -608,7 +608,7 @@ export class SpellLibrary {
                 1, // 1 turno de cooldown
                 'fuego', // Elemento fuego
                 '25-32', // Daño base
-                'assets/images/ui/spell-icons/archer/flecha_explosiva.png' // Icono del hechizo
+                'assets/images/ui/spell-icons/archer/flecha_flamigera.png' // Icono del hechizo
             ),
             new Spell(
                 'Flecha de Hielo',
@@ -641,7 +641,7 @@ export class SpellLibrary {
                 0, // Sin cooldown
                 'agua', // Elemento agua
                 '20-26', // Daño base
-                'assets/images/ui/spell-icons/archer/flecha_de_hielo.png' // Icono del hechizo
+                'assets/images/ui/spell-icons/archer/flecha_helada.png' // Icono del hechizo
             ),
             new Spell(
                 'Flecha del Viento',
@@ -674,7 +674,7 @@ export class SpellLibrary {
                 0, // Sin cooldown
                 'aire', // Elemento aire
                 '18-24', // Daño base
-                'assets/images/ui/spell-icons/archer/flecha_de_viento.png' // Icono del hechizo
+                'assets/images/ui/spell-icons/archer/flecha_retroceso.png' // Icono del hechizo
             )
         ];
     }
