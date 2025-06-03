@@ -55,7 +55,7 @@ export class SpellUI {
             const y = baseY + row * spacingY;
 
             // Crear área invisible para interacción (sobre la casilla)
-            const buttonBg = this.scene.add.rectangle(x, y, slotSize, slotSize, 0x000000, 0);
+            const buttonBg = this.scene.add.rectangle(x, y, 65, 65, 0x000000, 0); // Área de clic que cubra todo el icono
             buttonBg.setDepth(1501);
             buttonBg.setInteractive();
 
@@ -136,8 +136,8 @@ export class SpellUI {
 
             buttonBg.on('pointerover', () => {
                 if (spell.canCast) {
-                    // Crear overlay de hover dorado
-                    hoverOverlay = this.scene.add.rectangle(x, y, slotSize, slotSize, 0xFFD700, 0.3);
+                    // Crear overlay de hover dorado que cubra todo el icono
+                    hoverOverlay = this.scene.add.rectangle(x, y, 65, 65, 0xFFD700, 0.3);
                     hoverOverlay.setDepth(1503);
                 }
                 // Mostrar tooltip
@@ -189,7 +189,7 @@ export class SpellUI {
         if (selectedIndex >= 0 && selectedIndex < this.spellButtons.length) {
             const button = this.spellButtons[selectedIndex];
             this.selectedOverlay = this.scene.add.rectangle(
-                button.x, button.y, 40, 40, 0x00FF00, 0.4 // Tamaño actualizado para iconos grandes
+                button.x, button.y, 65, 65, 0x00FF00, 0.4 // Tamaño para cubrir completamente el icono de 60x60
             );
             this.selectedOverlay.setDepth(1503);
             this.elements.push(this.selectedOverlay);
