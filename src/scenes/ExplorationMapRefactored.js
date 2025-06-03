@@ -162,7 +162,7 @@ export class ExplorationMapRefactored extends Phaser.Scene {
 
         // Panel de usuario si está autenticado
         if (this.userData) {
-            this.userInfoPanel = new UserInfoPanel(this, this.userData, () => this.handleLogout());
+            this.userInfoPanel = new UserInfoPanel(this, this.userData);
         }
 
         // Actualizar UI con datos del jugador

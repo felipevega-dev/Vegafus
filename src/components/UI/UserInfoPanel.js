@@ -1,13 +1,13 @@
 /**
- * Componente para mostrar información del usuario y botón de logout
+ * Componente para mostrar información del usuario
+ * El logout se maneja ahora a través del botón de configuración en RightSidePanel
  */
 export class UserInfoPanel {
-    constructor(scene, userData, onLogout) {
+    constructor(scene, userData) {
         this.scene = scene;
         this.userData = userData;
-        this.onLogout = onLogout;
         this.elements = [];
-        
+
         if (this.userData) {
             this.create();
         }
@@ -23,23 +23,8 @@ export class UserInfoPanel {
         userText.setDepth(1001);
         this.elements.push(userText);
 
-        // Botón de logout
-        const logoutButton = this.scene.add.text(1200, 40, 'LOGOUT', {
-            fontSize: '12px',
-            fontFamily: 'Arial',
-            color: '#ff4444',
-            backgroundColor: '#333333',
-            padding: { x: 8, y: 4 }
-        });
-        logoutButton.setOrigin(0.5);
-        logoutButton.setDepth(1001);
-        logoutButton.setInteractive();
-        logoutButton.on('pointerdown', () => {
-            if (this.onLogout) {
-                this.onLogout();
-            }
-        });
-        this.elements.push(logoutButton);
+        // El botón de logout ahora se maneja a través del engranaje de configuración
+        // en el RightSidePanel, por lo que no necesitamos crear uno aquí
     }
 
     destroy() {
