@@ -2,6 +2,8 @@ import { Grid } from '../classes/Grid.js';
 import { Player } from '../classes/Player.js';
 import { Enemy } from '../classes/Enemy.js';
 import { TurnManager } from '../systems/TurnManager.js';
+import { SpellUI } from '../components/UI/SpellUI.js';
+import { SpellSystem } from '../systems/combat/SpellSystem.js';
 
 export class IsometricMap extends Phaser.Scene {
     constructor() {
@@ -35,8 +37,8 @@ export class IsometricMap extends Phaser.Scene {
         // Crear sistema de turnos
         this.createTurnSystem();
 
-        // Crear UI de hechizos
-        this.createSpellUI();
+        // Crear sistemas de combate
+        this.createCombatSystems();
 
         // Configurar controles
         this.setupControls();
@@ -45,13 +47,10 @@ export class IsometricMap extends Phaser.Scene {
         this.cameras.main.setBounds(0, 0, 1280, 720);
         this.cameras.main.startFollow(this.player.sprite);
 
-        // Variables para el sistema de movimiento y hechizos
+        // Variables para el sistema de movimiento
         this.selectedCell = null;
         this.movementIndicators = [];
         this.attackIndicators = [];
-        this.selectedSpellIndex = -1;
-        this.spellMode = false;
-        this.spellRangeIndicators = [];
     }
     createSymmetricMap() {
         // Crear mapa simétrico de 15x15 para combate (formato cuadrado)
@@ -251,109 +250,21 @@ export class IsometricMap extends Phaser.Scene {
         this.turnManager.startPositioning();
     }
 
-    createSpellUI() {
-        // Panel de hechizos
-        this.spellPanel = this.add.rectangle(1100, 200, 160, 300, 0x000000, 0.8);
-        this.spellPanel.setDepth(1500);
+    createCombatSystems() {
+        // Crear sistema de hechizos
+        this.spellSystem = new SpellSystem(this, this.grid, this.player);
 
-        // Título del panel
-        this.spellTitle = this.add.text(1100, 80, 'Hechizos', {
-            fontSize: '18px',
-            fontFamily: 'Arial',
-            color: '#ffffff',
-            fontStyle: 'bold'
-        });
-        this.spellTitle.setOrigin(0.5);
-        this.spellTitle.setDepth(1501);
-
-        // Botones de hechizos
-        this.spellButtons = [];
-        this.createSpellButtons();
+        // Crear UI de hechizos mejorada
+        this.spellUI = new SpellUI(this, this.player, this.spellSystem);
+        this.spellUI.setupKeyboardShortcuts();
     }
 
-    createSpellButtons() {
-        // Limpiar botones existentes
-        this.spellButtons.forEach(button => {
-            if (button.background) button.background.destroy();
-            if (button.text) button.text.destroy();
-        });
-        this.spellButtons = [];
 
-        const spells = this.player.getSpellsInfo();
-
-        spells.forEach((spell, index) => {
-            const y = 120 + (index * 60);
-
-            // Fondo del botón
-            const buttonBg = this.add.rectangle(1100, y, 140, 50, 0x333333, 0.9);
-            buttonBg.setDepth(1501);
-            buttonBg.setInteractive();
-
-            // Texto del hechizo
-            const buttonText = this.add.text(1100, y - 10, spell.name, {
-                fontSize: '12px',
-                fontFamily: 'Arial',
-                color: spell.canCast ? '#ffffff' : '#666666',
-                fontStyle: 'bold'
-            });
-            buttonText.setOrigin(0.5);
-            buttonText.setDepth(1502);
-
-            // Información adicional
-            const infoText = this.add.text(1100, y + 10, `PA:${spell.actionPointCost} Rango:${spell.range}`, {
-                fontSize: '10px',
-                fontFamily: 'Arial',
-                color: spell.canCast ? '#ffff00' : '#444444'
-            });
-            infoText.setOrigin(0.5);
-            infoText.setDepth(1502);
-
-            // Evento de clic
-            buttonBg.on('pointerdown', () => {
-                if (this.turnManager.isPlayerTurn && spell.canCast) {
-                    this.selectSpell(index);
-                }
-            });
-
-            // Efecto hover
-            buttonBg.on('pointerover', () => {
-                if (spell.canCast) {
-                    buttonBg.setFillStyle(0x555555);
-                }
-            });
-
-            buttonBg.on('pointerout', () => {
-                buttonBg.setFillStyle(this.selectedSpellIndex === index ? 0x666600 : 0x333333);
-            });
-
-            this.spellButtons.push({
-                background: buttonBg,
-                text: buttonText,
-                info: infoText,
-                spell: spell
-            });
-        });
-    }
 
     selectSpell(spellIndex) {
-        if (this.turnManager.gameState !== 'playing') return;
-
-        this.selectedSpellIndex = spellIndex;
-        this.spellMode = true;
-
-        // Mostrar rango del hechizo
-        this.showSpellRange(spellIndex);
-
-        // Actualizar colores de botones
-        this.spellButtons.forEach((button, index) => {
-            if (index === spellIndex) {
-                button.background.setFillStyle(0x666600); // Amarillo oscuro para seleccionado
-            } else {
-                button.background.setFillStyle(0x333333);
-            }
-        });
-
-        console.log(`Hechizo seleccionado: ${this.player.spells[spellIndex].name}`);
+        if (this.spellSystem) {
+            this.spellSystem.selectSpell(spellIndex);
+        }
     }
 
     setupControls() {
@@ -381,11 +292,9 @@ export class IsometricMap extends Phaser.Scene {
         // Tecla para cancelar selección de hechizo
         this.escapeKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
         this.escapeKey.on('down', () => {
-            this.spellMode = false;
-            this.selectedSpellIndex = -1;
-            this.clearSpellRange();
-            this.updateSpellButtons();
-            console.log('Selección de hechizo cancelada');
+            if (this.spellSystem) {
+                this.spellSystem.cancelSpellSelection();
+            }
         });
 
         // Teclas para terminar turno
@@ -405,7 +314,9 @@ export class IsometricMap extends Phaser.Scene {
     }
 
     updateSpellButtons() {
-        this.createSpellButtons();
+        if (this.spellUI) {
+            this.spellUI.updateSpellButtons();
+        }
     }
 
     handleMouseClick(pointer) {
@@ -436,14 +347,9 @@ export class IsometricMap extends Phaser.Scene {
         }
 
         // Si estamos en modo hechizo
-        if (this.spellMode && this.selectedSpellIndex >= 0) {
-            if (this.player.castSpell(this.selectedSpellIndex, gridPos.x, gridPos.y)) {
-                this.spellMode = false;
-                this.selectedSpellIndex = -1;
-                this.clearSpellRange();
-                this.updateSpellButtons();
+        if (this.spellSystem && this.spellSystem.isInSpellMode()) {
+            if (this.spellSystem.castSpell(gridPos.x, gridPos.y)) {
                 this.turnManager.updateTurnUI();
-
                 // Verificar si el juego ha terminado después del hechizo
                 this.turnManager.checkGameEnd();
             }
@@ -494,7 +400,7 @@ export class IsometricMap extends Phaser.Scene {
     showMovementPreview(targetX, targetY) {
         this.clearMovementPreview();
 
-        if (!this.turnManager.isPlayerTurn || this.spellMode) return;
+        if (!this.turnManager.isPlayerTurn || (this.spellSystem && this.spellSystem.isInSpellMode())) return;
 
         // Encontrar camino hacia el objetivo
         const path = this.grid.findPath(
@@ -556,76 +462,7 @@ export class IsometricMap extends Phaser.Scene {
         this.movementIndicators = [];
     }
 
-    // Mostrar rango de hechizo
-    showSpellRange(spellIndex) {
-        this.clearSpellRange();
 
-        if (spellIndex < 0 || spellIndex >= this.player.spells.length) return;
-
-        const spell = this.player.spells[spellIndex];
-        const playerX = this.player.gridX;
-        const playerY = this.player.gridY;
-
-        // Mostrar todas las celdas en rango
-        for (let y = 0; y < this.grid.height; y++) {
-            for (let x = 0; x < this.grid.width; x++) {
-                const distance = this.grid.getDistance(playerX, playerY, x, y);
-
-                if (distance <= spell.range && distance > 0) {
-                    const worldPos = this.grid.gridToWorld(x, y);
-
-                    // Color según si es un objetivo válido
-                    const cell = this.grid.cells[y][x];
-                    const hasEnemy = cell.object && cell.object.constructor.name === 'Enemy';
-                    const color = hasEnemy ? 0xff0000 : 0x0088ff; // Rojo para enemigos, azul para celdas vacías
-
-                    const rangeIndicator = this.add.rectangle(
-                        worldPos.x, worldPos.y,
-                        this.grid.tileSize - 6, this.grid.tileSize - 6,
-                        color, 0.4
-                    );
-                    rangeIndicator.setDepth(60);
-
-                    // Añadir borde
-                    const border = this.add.rectangle(
-                        worldPos.x, worldPos.y,
-                        this.grid.tileSize - 6, this.grid.tileSize - 6
-                    );
-                    border.setStrokeStyle(2, color, 0.8);
-                    border.setDepth(61);
-
-                    this.spellRangeIndicators.push(rangeIndicator);
-                    this.spellRangeIndicators.push(border);
-                }
-            }
-        }
-
-        // Mostrar información del hechizo
-        const spellInfo = this.add.text(
-            this.player.sprite.x, this.player.sprite.y - 60,
-            `${spell.name} - Rango: ${spell.range}`,
-            {
-                fontSize: '12px',
-                fontFamily: 'Arial',
-                color: '#ffffff',
-                backgroundColor: '#000000',
-                padding: { x: 6, y: 3 }
-            }
-        );
-        spellInfo.setOrigin(0.5);
-        spellInfo.setDepth(62);
-        this.spellRangeIndicators.push(spellInfo);
-    }
-
-    // Limpiar preview de rango de hechizo
-    clearSpellRange() {
-        this.spellRangeIndicators.forEach(indicator => {
-            if (indicator && indicator.destroy) {
-                indicator.destroy();
-            }
-        });
-        this.spellRangeIndicators = [];
-    }
 }
 
 
