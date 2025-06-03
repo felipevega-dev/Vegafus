@@ -73,6 +73,9 @@ export class IsometricMapRefactored extends Combat {
 
         // Volver al mapa de exploración después de un delay
         this.time.delayedCall(3000, () => {
+            // Limpiar estado antes de cambiar de escena
+            this.cleanupBeforeSceneChange();
+
             this.scene.start('ExplorationMapRefactored', {
                 userData: this.userData,
                 characterId: this.currentCharacterId,
@@ -89,6 +92,9 @@ export class IsometricMapRefactored extends Combat {
 
         // Volver al mapa de exploración después de un delay
         this.time.delayedCall(3000, () => {
+            // Limpiar estado antes de cambiar de escena
+            this.cleanupBeforeSceneChange();
+
             this.scene.start('ExplorationMapRefactored', {
                 userData: this.userData,
                 characterId: this.currentCharacterId,
@@ -144,6 +150,9 @@ export class IsometricMapRefactored extends Combat {
         continueButton.setInteractive();
 
         continueButton.on('pointerdown', () => {
+            // Limpiar estado antes de cambiar de escena
+            this.cleanupBeforeSceneChange();
+
             this.scene.start('ExplorationMapRefactored', {
                 userData: this.userData,
                 characterId: this.currentCharacterId,

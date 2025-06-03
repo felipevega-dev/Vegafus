@@ -332,15 +332,77 @@ export class Combat extends Phaser.Scene {
 
     // Limpiar estado antes de cambiar de escena
     cleanupBeforeSceneChange() {
-        // Reiniciar TurnManager para el próximo combate
+        console.log('🧹 Limpiando estado antes de cambiar de escena...');
+
+        // Destruir completamente TurnManager para limpiar todos los elementos de UI
         if (this.turnManager) {
-            this.turnManager.reset();
+            this.turnManager.destroy();
+            this.turnManager = null;
+        }
+
+        // Destruir SpellUI para limpiar elementos de hechizos
+        if (this.spellUI) {
+            this.spellUI.destroy();
+            this.spellUI = null;
         }
 
         // Limpiar sistemas
         if (this.movementSystem) this.movementSystem.clearMovementPreview();
         if (this.spellSystem) this.spellSystem.clearSpellRange();
         if (this.enemyManager) this.enemyManager.clearEnemies();
+
+        // Limpiar cualquier elemento de texto que pueda haber quedado
+        this.cleanupRemainingTextElements();
+
+        console.log('✅ Estado limpiado correctamente');
+    }
+
+    // Método para limpiar elementos de texto que puedan haber quedado
+    cleanupRemainingTextElements() {
+        console.log('🧹 Limpiando elementos de texto restantes...');
+
+        // Buscar y destruir todos los elementos de texto con depth alto (UI)
+        if (this.children && this.children.list) {
+            const textElements = this.children.list.filter(child => {
+                return child.type === 'Text' && child.depth >= 1000;
+            });
+
+            if (textElements.length > 0) {
+                console.log(`🧹 Encontrados ${textElements.length} elementos de texto para limpiar`);
+                textElements.forEach(element => {
+                    try {
+                        if (element && element.destroy) {
+                            element.destroy();
+                        }
+                    } catch (error) {
+                        console.warn('Error limpiando elemento de texto:', error);
+                    }
+                });
+            }
+        }
+
+        // También limpiar elementos de imagen/gráficos de UI
+        if (this.children && this.children.list) {
+            const uiElements = this.children.list.filter(child => {
+                return (child.type === 'Image' || child.type === 'Rectangle' || child.type === 'Graphics') &&
+                       child.depth >= 1500;
+            });
+
+            if (uiElements.length > 0) {
+                console.log(`🧹 Encontrados ${uiElements.length} elementos de UI para limpiar`);
+                uiElements.forEach(element => {
+                    try {
+                        if (element && element.destroy) {
+                            element.destroy();
+                        }
+                    } catch (error) {
+                        console.warn('Error limpiando elemento de UI:', error);
+                    }
+                });
+            }
+        }
+
+        console.log('🧹 Limpieza de elementos restantes completada');
     }
 
     destroy() {
