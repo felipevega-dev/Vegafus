@@ -13,22 +13,6 @@ export class SpellUI {
     }
 
     create() {
-        // Panel de hechizos
-        this.spellPanel = this.scene.add.rectangle(1100, 200, 160, 300, 0x000000, 0.8);
-        this.spellPanel.setDepth(1500);
-        this.elements.push(this.spellPanel);
-
-        // Título del panel
-        this.spellTitle = this.scene.add.text(1100, 80, 'Hechizos', {
-            fontSize: '18px',
-            fontFamily: 'Arial',
-            color: '#ffffff',
-            fontStyle: 'bold'
-        });
-        this.spellTitle.setOrigin(0.5);
-        this.spellTitle.setDepth(1501);
-        this.elements.push(this.spellTitle);
-
         // Crear botones de hechizos
         this.createSpellButtons();
     }
@@ -47,9 +31,9 @@ export class SpellUI {
 
         // Crear el fondo del menú vertical
         if (this.menuBackground) this.menuBackground.destroy();
-        this.menuBackground = this.scene.add.image(1150, 200, 'menuvertical');
+        this.menuBackground = this.scene.add.image(1150, 350, 'menuvertical'); // Bajado mucho más
         this.menuBackground.setDepth(1500);
-        this.menuBackground.setScale(0.3); // Mucho más pequeño
+        this.menuBackground.setScale(0.25); // Mucho más pequeño
         this.elements.push(this.menuBackground);
 
         const spells = this.player.getSpellsInfo();
@@ -60,11 +44,11 @@ export class SpellUI {
             const col = index % 2; // 0 = izquierda, 1 = derecha
             const row = Math.floor(index / 2); // Fila
 
-            // Posiciones base del menú (ajustar según la imagen)
-            const baseX = 1100;
-            const baseY = 150; // Empezar más arriba
-            const slotSize = 60; // Tamaño de cada casilla
-            const spacing = 65; // Espaciado entre casillas
+            // Posiciones base del menú (ajustadas para la nueva escala y posición)
+            const baseX = 1150;
+            const baseY = 310; // Ajustado para la nueva posición del menú
+            const slotSize = 40; // Casillas aún más grandes
+            const spacing = 35; // Espaciado ajustado para la escala más pequeña
 
             const x = baseX + (col - 0.5) * spacing; // -0.5 para centrar
             const y = baseY + row * spacing;
@@ -94,11 +78,11 @@ export class SpellUI {
                 if (this.scene.textures.exists(textureKey)) {
                     // Si la textura ya está cargada, usarla
                     spellIcon = this.scene.add.image(x, y, textureKey);
-                    spellIcon.setDisplaySize(40, 40); // Tamaño más grande para las casillas
+                    spellIcon.setDisplaySize(60, 60); // Iconos mucho más grandes
                     spellIcon.setDepth(1502);
                 } else {
                     // Crear círculo como fallback inmediatamente
-                    spellIcon = this.scene.add.circle(x, y, 20, color, 0.8);
+                    spellIcon = this.scene.add.circle(x, y, 30, color, 0.8); // Círculo mucho más grande
                     spellIcon.setDepth(1502);
 
                     // Intentar cargar la imagen dinámicamente en segundo plano
@@ -112,7 +96,7 @@ export class SpellUI {
 
                             spellIcon.destroy();
                             spellIcon = this.scene.add.image(iconX, iconY, textureKey);
-                            spellIcon.setDisplaySize(40, 40);
+                            spellIcon.setDisplaySize(60, 60); // Iconos mucho más grandes
                             spellIcon.setDepth(iconDepth);
 
                             // Actualizar la referencia en el botón
@@ -126,7 +110,7 @@ export class SpellUI {
                 }
             } else {
                 // Crear círculo de color elemental como fallback
-                spellIcon = this.scene.add.circle(x, y, 20, color, 0.8);
+                spellIcon = this.scene.add.circle(x, y, 15, color, 0.8); // Círculo más grande
                 spellIcon.setDepth(1502);
             }
 
@@ -156,7 +140,7 @@ export class SpellUI {
                     hoverOverlay.setDepth(1503);
                 }
                 // Mostrar tooltip
-                tooltip = this.showSpellTooltip(index, x + 80, y - 50);
+                tooltip = this.showSpellTooltip(index, x - 120, y - 40); // Ajustado para nueva posición
             });
 
             buttonBg.on('pointerout', () => {
@@ -204,7 +188,7 @@ export class SpellUI {
         if (selectedIndex >= 0 && selectedIndex < this.spellButtons.length) {
             const button = this.spellButtons[selectedIndex];
             this.selectedOverlay = this.scene.add.rectangle(
-                button.x, button.y, 60, 60, 0x00FF00, 0.4
+                button.x, button.y, 35, 35, 0x00FF00, 0.4 // Tamaño actualizado
             );
             this.selectedOverlay.setDepth(1503);
             this.elements.push(this.selectedOverlay);
