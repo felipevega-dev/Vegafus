@@ -402,6 +402,12 @@ export class CombatSummary {
             kamas: this.player.kamas,
             inventory: this.player.inventory,
             characteristics: this.player.characteristics,
+            // ¡CRÍTICO! Incluir puntos de capital y hechizo
+            capitalPoints: this.player.capitalPoints,
+            spellPoints: this.player.spellPoints,
+            // Incluir resistencias y bonos de daño si existen
+            resistances: this.player.resistances,
+            damageBonus: this.player.damageBonus,
             // Marcar que viene de combate para indicar ganancia de experiencia
             combatResult: 'victory',
             enemiesDefeated: this.defeatedEnemies.length,
@@ -441,6 +447,12 @@ export class CombatSummary {
             // Datos de dinero e inventario desde el registro actualizado
             kamas: playerData.kamas,
             inventory: playerData.inventory,
+            // ¡CRÍTICO! Incluir características y puntos desde el registro
+            characteristics: playerData.characteristics,
+            capitalPoints: playerData.capitalPoints,
+            spellPoints: playerData.spellPoints,
+            resistances: playerData.resistances,
+            damageBonus: playerData.damageBonus,
             // Marcar que viene de combate para indicar ganancia de experiencia
             combatResult: 'victory',
             enemiesDefeated: this.defeatedEnemies.length,
@@ -461,7 +473,15 @@ export class CombatSummary {
             experience: this.player.experience,
             playerClass: this.player.playerClass,
             attack: this.player.attack,
-            defense: this.player.defense
+            defense: this.player.defense,
+            kamas: this.player.kamas,
+            inventory: this.player.inventory,
+            // ¡CRÍTICO! Incluir características y puntos en el fallback local
+            characteristics: this.player.characteristics,
+            capitalPoints: this.player.capitalPoints,
+            spellPoints: this.player.spellPoints,
+            resistances: this.player.resistances,
+            damageBonus: this.player.damageBonus
         });
     }
 

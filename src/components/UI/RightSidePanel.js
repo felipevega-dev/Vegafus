@@ -461,10 +461,12 @@ export class RightSidePanel {
 
     showCharacteristics() {
         this.activePanel = 'characteristics';
-        // Abrir la escena de características existente
-        this.scene.scene.launch('CharacteristicsScene', { 
+        // Abrir la escena de características existente con todos los datos necesarios
+        this.scene.scene.launch('CharacteristicsScene', {
             player: this.player,
-            returnScene: this.scene.scene.key 
+            userData: this.scene.userData, // Pasar datos del usuario
+            characterId: this.scene.currentCharacterId, // Pasar ID del personaje
+            parentScene: this.scene.scene.key
         });
     }
 

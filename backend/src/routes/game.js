@@ -46,10 +46,11 @@ router.post('/save-progress', async (req, res) => {
             }
         }
 
-        // Verificar subida de nivel
-        while (character.canLevelUp()) {
-            character.levelUp();
-        }
+        // NOTA: Level up automático deshabilitado para evitar bucles
+        // El level up ahora se maneja explícitamente cuando se actualiza la experiencia
+        // while (character.canLevelUp()) {
+        //     character.levelUp();
+        // }
 
         character.gameStats.lastSaved = new Date();
         await character.save();

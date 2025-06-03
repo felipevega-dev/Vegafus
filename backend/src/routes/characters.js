@@ -211,10 +211,17 @@ router.put('/:characterId', async (req, res) => {
             'resistances', 'damageBonus', 'spells', 'spellPoints', 'kamas'
         ];
 
+        // Verificar si se está actualizando la experiencia para manejar level ups
+        const oldExperience = character.experience;
+        let experienceUpdated = false;
+
         // Actualizar solo los campos permitidos
         allowedUpdates.forEach(field => {
             if (req.body[field] !== undefined) {
-                if (field === 'stats') {
+                if (field === 'experience') {
+                    character[field] = req.body[field];
+                    experienceUpdated = true;
+                } else if (field === 'stats') {
                     // Manejar stats de forma especial para evitar sobrescribir campos existentes
                     character.stats = { ...character.stats, ...req.body[field] };
                 } else if (field === 'inventory') {
@@ -243,10 +250,28 @@ router.put('/:characterId', async (req, res) => {
             }
         });
 
-        // Verificar si puede subir de nivel
-        while (character.canLevelUp()) {
-            character.levelUp();
+        // Solo procesar level up si la experiencia aumentó (no disminuyó)
+        if (experienceUpdated && character.experience > oldExperience) {
+            console.log(`📈 Experiencia actualizada: ${oldExperience} → ${character.experience}`);
+
+            // Verificar si puede subir de nivel
+            let levelsGained = 0;
+            while (character.canLevelUp()) {
+                character.levelUp();
+                levelsGained++;
+            }
+
+            if (levelsGained > 0) {
+                console.log(`🎉 ¡Subió ${levelsGained} nivel(es)! Nuevos puntos otorgados.`);
+            }
         }
+
+        // NOTA: Level up automático deshabilitado para evitar bucles
+        // El level up ahora se maneja explícitamente cuando se gana experiencia
+        // o mediante la ruta force-levelup para testing
+        // while (character.canLevelUp()) {
+        //     character.levelUp();
+        // }
 
         // Actualizar timestamp de guardado
         character.gameStats.lastSaved = new Date();

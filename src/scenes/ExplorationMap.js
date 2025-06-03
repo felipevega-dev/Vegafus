@@ -550,7 +550,15 @@ export class ExplorationMap extends Phaser.Scene {
             experience: this.player.experience,
             playerClass: this.player.playerClass,
             attack: this.player.attack,
-            defense: this.player.defense
+            defense: this.player.defense,
+            kamas: this.player.kamas,
+            inventory: this.player.inventory,
+            // ¡CRÍTICO! Incluir características y puntos al iniciar combate
+            characteristics: this.player.characteristics,
+            capitalPoints: this.player.capitalPoints,
+            spellPoints: this.player.spellPoints,
+            resistances: this.player.resistances,
+            damageBonus: this.player.damageBonus
         });
 
         // Guardar datos del usuario para mantener la sesión
@@ -790,7 +798,15 @@ export class ExplorationMap extends Phaser.Scene {
                 position: {
                     x: this.player.gridX,
                     y: this.player.gridY
-                }
+                },
+                // Incluir todos los datos del jugador
+                kamas: this.player.kamas,
+                inventory: this.player.inventory,
+                characteristics: this.player.characteristics,
+                capitalPoints: this.player.capitalPoints,
+                spellPoints: this.player.spellPoints,
+                resistances: this.player.resistances,
+                damageBonus: this.player.damageBonus
             };
 
             await apiClient.saveProgress(this.currentCharacterId, gameData);

@@ -247,7 +247,13 @@ export class TurnManager {
             attack: player.attack,
             defense: player.defense,
             kamas: player.kamas,
-            inventory: player.inventory
+            inventory: player.inventory,
+            // ¡CRÍTICO! Incluir características y puntos
+            characteristics: player.characteristics,
+            capitalPoints: player.capitalPoints,
+            spellPoints: player.spellPoints,
+            resistances: player.resistances,
+            damageBonus: player.damageBonus
         });
 
         // Mostrar resumen de combate (ahora incluirá los drops)
