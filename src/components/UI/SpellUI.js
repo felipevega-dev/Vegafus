@@ -18,6 +18,14 @@ export class SpellUI {
     }
 
     createSpellButtons() {
+        // Limpiar TODOS los elementos existentes (incluyendo overlays de disabled)
+        this.elements.forEach(element => {
+            if (element && element.destroy) {
+                element.destroy();
+            }
+        });
+        this.elements = [];
+
         // Limpiar botones existentes
         this.spellButtons.forEach(button => {
             if (button.background) button.background.destroy();
