@@ -54,8 +54,16 @@ export class TurnManager {
     confirmPositionAndStartCombat() {
         if (this.gameState !== 'positioning') return;
 
-        // Generar enemigos aleatoriamente
-        this.scene.spawnEnemiesRandomly();
+        // Generar enemigos aleatoriamente usando el EnemyManager
+        if (this.scene.enemyManager && this.scene.enemyManager.spawnEnemiesRandomly) {
+            this.scene.enemyManager.spawnEnemiesRandomly(1);
+        } else if (this.scene.spawnEnemiesRandomly) {
+            // Fallback para compatibilidad con IsometricMap.js
+            this.scene.spawnEnemiesRandomly();
+        } else {
+            console.error('No se encontró método para generar enemigos');
+            return;
+        }
 
         // Cambiar a modo combate
         this.startCombat();
@@ -460,6 +468,27 @@ export class TurnManager {
             this.playerAPText.setText(`PA: ${player.currentActionPoints}/${player.maxActionPoints}`);
             this.playerMPText.setText(`PM: ${player.currentMovementPoints}/${player.maxMovementPoints}`);
         }
+    }
+
+    // Reiniciar el estado del TurnManager para un nuevo combate
+    reset() {
+        // Limpiar temporizador actual
+        if (this.currentTurnTimer) {
+            this.currentTurnTimer.destroy();
+            this.currentTurnTimer = null;
+        }
+
+        // Reiniciar variables de estado
+        this.currentTurn = 0;
+        this.turnOrder = [];
+        this.currentEntityIndex = 0;
+        this.isPlayerTurn = true;
+        this.gameState = 'positioning';
+        this.timeRemaining = this.turnTimeLimit;
+        this.defeatedEnemies = [];
+
+        // Reiniciar UI
+        this.updateTurnUI();
     }
 
     // Limpiar el sistema de turnos

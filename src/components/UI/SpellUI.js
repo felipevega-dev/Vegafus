@@ -18,6 +18,12 @@ export class SpellUI {
     }
 
     createSpellButtons() {
+        // Verificar que el player esté inicializado y tenga el método getSpellsInfo
+        if (!this.player || typeof this.player.getSpellsInfo !== 'function') {
+            console.error('Player no está inicializado o no tiene método getSpellsInfo');
+            return;
+        }
+
         // Limpiar TODOS los elementos existentes (incluyendo overlays de disabled)
         this.elements.forEach(element => {
             if (element && element.destroy) {

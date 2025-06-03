@@ -35,7 +35,7 @@ export class Combat extends Phaser.Scene {
         });
     }
 
-    create(data) {
+    async create(data) {
         // Inicializar datos básicos
         this.initializeData(data);
 
@@ -48,8 +48,8 @@ export class Combat extends Phaser.Scene {
         // Crear mapa de combate
         this.createCombatMap();
 
-        // Crear jugador
-        this.createPlayer();
+        // Crear jugador (ESPERAR a que termine)
+        await this.createPlayer();
 
         // Configurar cámara
         this.setupCamera();
@@ -57,7 +57,7 @@ export class Combat extends Phaser.Scene {
         // Configurar controles
         this.setupControls();
 
-        // Inicializar UI
+        // Inicializar UI (después de que el player esté listo)
         this.createUI();
 
         // Iniciar fase de posicionamiento
@@ -279,6 +279,9 @@ export class Combat extends Phaser.Scene {
         // Implementar lógica de victoria
         // Por ahora, volver al mapa de exploración
         this.time.delayedCall(2000, () => {
+            // Limpiar estado antes de cambiar de escena
+            this.cleanupBeforeSceneChange();
+
             this.scene.start('ExplorationMapRefactored', {
                 userData: this.userData,
                 characterId: this.currentCharacterId
@@ -290,11 +293,27 @@ export class Combat extends Phaser.Scene {
         // Implementar lógica de derrota
         // Por ahora, volver al mapa de exploración
         this.time.delayedCall(2000, () => {
+            // Limpiar estado antes de cambiar de escena
+            this.cleanupBeforeSceneChange();
+
             this.scene.start('ExplorationMapRefactored', {
                 userData: this.userData,
                 characterId: this.currentCharacterId
             });
         });
+    }
+
+    // Limpiar estado antes de cambiar de escena
+    cleanupBeforeSceneChange() {
+        // Reiniciar TurnManager para el próximo combate
+        if (this.turnManager) {
+            this.turnManager.reset();
+        }
+
+        // Limpiar sistemas
+        if (this.movementSystem) this.movementSystem.clearMovementPreview();
+        if (this.spellSystem) this.spellSystem.clearSpellRange();
+        if (this.enemyManager) this.enemyManager.clearEnemies();
     }
 
     destroy() {

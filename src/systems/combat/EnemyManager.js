@@ -228,12 +228,21 @@ export class EnemyManager {
         return availableCells.slice(0, 3);
     }
 
-    destroy() {
+    // Limpiar todos los enemigos (para reiniciar combate)
+    clearEnemies() {
         this.enemies.forEach(enemy => {
             if (enemy.sprite && enemy.sprite.destroy) {
                 enemy.sprite.destroy();
             }
+            // Liberar celda ocupada
+            if (enemy.gridX !== undefined && enemy.gridY !== undefined) {
+                this.grid.setFree(enemy.gridX, enemy.gridY);
+            }
         });
         this.enemies = [];
+    }
+
+    destroy() {
+        this.clearEnemies();
     }
 }
