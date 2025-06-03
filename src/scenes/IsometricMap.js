@@ -23,7 +23,7 @@ export class IsometricMap extends Phaser.Scene {
         });
     }
 
-    create() {
+    async create() {
         // Crear sistema de grid más grande y simétrico para combate
         this.grid = new Grid(this, 15, 15);
 
@@ -31,7 +31,7 @@ export class IsometricMap extends Phaser.Scene {
         this.createSymmetricMap();
 
         // Crear jugador y enemigos
-        this.createPlayer();
+        await this.createPlayer();
         this.createEnemies();
 
         // Crear sistema de turnos
@@ -155,9 +155,11 @@ export class IsometricMap extends Phaser.Scene {
         }
     }
 
-    createPlayer() {
+    async createPlayer() {
         // Verificar si hay datos guardados del jugador
         const savedPlayerData = this.registry.get('playerData');
+        const userData = this.registry.get('userData');
+        const currentCharacterId = this.registry.get('currentCharacterId');
 
         if (savedPlayerData) {
             // Restaurar jugador con datos guardados
@@ -168,6 +170,37 @@ export class IsometricMap extends Phaser.Scene {
             this.player.experience = savedPlayerData.experience || 0;
             this.player.attack = savedPlayerData.attack || this.player.attack;
             this.player.defense = savedPlayerData.defense || this.player.defense;
+
+            // Cargar datos actualizados del backend para hechizos
+            if (userData && currentCharacterId) {
+                try {
+                    const response = await fetch(`http://localhost:3000/api/characters/${currentCharacterId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        const character = await response.json();
+
+                        // Aplicar características actualizadas
+                        this.player.characteristics = character.characteristics || {
+                            tierra: 0, fuego: 0, agua: 0, aire: 0, vida: 0, sabiduria: 0
+                        };
+
+                        // Cargar hechizos actualizados desde el backend
+                        if (character.spells && character.spells.length > 0) {
+                            const { SpellLibrary } = await import('../classes/Spell.js');
+                            this.player.spells = SpellLibrary.createSpellsFromBackend(character.spells);
+                            console.log('🔮 Hechizos actualizados cargados en combate:', this.player.spells.map(s => `${s.name} (Nv.${s.level})`));
+                        }
+
+                        this.player.spellPoints = character.spellPoints || 0;
+                    }
+                } catch (error) {
+                    console.error('❌ Error cargando datos actualizados del personaje:', error);
+                }
+            }
 
             console.log(`Jugador restaurado en combate: Nivel ${this.player.level}, XP: ${this.player.experience}`);
         } else {

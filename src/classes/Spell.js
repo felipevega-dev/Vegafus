@@ -1,5 +1,5 @@
 export class Spell {
-    constructor(name, actionPointCost, range, description, effect, cooldown = 0, element = null, baseDamage = null) {
+    constructor(name, actionPointCost, range, description, effect, cooldown = 0, element = null, baseDamage = null, iconPath = null) {
         this.name = name;
         this.actionPointCost = actionPointCost;
         this.range = range;
@@ -9,6 +9,7 @@ export class Spell {
         this.currentCooldown = 0;
         this.element = element; // Elemento del hechizo: 'tierra', 'fuego', 'agua', 'aire'
         this.baseDamage = baseDamage; // Daño base del hechizo (para mostrar en UI)
+        this.iconPath = iconPath; // Ruta del icono del hechizo
 
         // Sistema de niveles de hechizo (como Dofus)
         this.level = 1; // Nivel actual del hechizo (1-5)
@@ -290,7 +291,8 @@ export class SpellLibrary {
                 },
                 1, // 1 turno de cooldown
                 'tierra', // Elemento tierra
-                '30-35' // Daño base aproximado (ataque * 1.5)
+                '30-35', // Daño base aproximado (ataque * 1.5)
+                'images/ui/spell-icons/warrior/golpe_telurico.png' // Icono del hechizo
             ),
             new Spell(
                 'Llama Ardiente',
@@ -322,7 +324,8 @@ export class SpellLibrary {
                 },
                 0, // Sin cooldown
                 'fuego', // Elemento fuego
-                '28-32' // Daño base aproximado (ataque + 10)
+                '28-32', // Daño base aproximado (ataque + 10)
+                'images/ui/spell-icons/warrior/llama_ardiente.png' // Icono del hechizo
             ),
             new Spell(
                 'Tormenta Helada',
@@ -351,7 +354,8 @@ export class SpellLibrary {
                 },
                 1, // 1 turno de cooldown
                 'agua', // Elemento agua
-                '26-30' // Daño base aproximado (ataque + 8)
+                '26-30', // Daño base aproximado (ataque + 8)
+                'images/ui/spell-icons/warrior/tormenta_helada.png' // Icono del hechizo
             ),
             new Spell(
                 'Viento Cortante',
@@ -380,7 +384,8 @@ export class SpellLibrary {
                 },
                 0, // Sin cooldown
                 'aire', // Elemento aire
-                '24-28' // Daño base aproximado (ataque + 6)
+                '24-28', // Daño base aproximado (ataque + 6)
+                'images/ui/spell-icons/warrior/viento_cortante.png' // Icono del hechizo
             )
         ];
     }
@@ -426,7 +431,8 @@ export class SpellLibrary {
                 },
                 2, // 2 turnos de cooldown
                 'tierra', // Elemento tierra
-                '30-40' // Daño base en área
+                '30-40', // Daño base en área
+                'images/ui/spell-icons/mage/terremoto.png' // Icono del hechizo
             ),
             new Spell(
                 'Bola de Fuego',
@@ -455,7 +461,8 @@ export class SpellLibrary {
                 },
                 1, // 1 turno de cooldown
                 'fuego', // Elemento fuego
-                '25-35' // Daño base
+                '25-35', // Daño base
+                'images/ui/spell-icons/mage/bola_de_fuego.png' // Icono del hechizo
             ),
             new Spell(
                 'Rayo de Hielo',
@@ -484,7 +491,8 @@ export class SpellLibrary {
                 },
                 0, // Sin cooldown
                 'agua', // Elemento agua
-                '20-30' // Daño base
+                '20-30', // Daño base
+                'images/ui/spell-icons/mage/rayo_de_hielo.png' // Icono del hechizo
             ),
             new Spell(
                 'Tormenta Eléctrica',
@@ -521,7 +529,8 @@ export class SpellLibrary {
                 },
                 1, // 1 turno de cooldown
                 'aire', // Elemento aire
-                '15-25' // Daño base en área
+                '15-25', // Daño base en área
+                'images/ui/spell-icons/mage/tormenta_electrica.png' // Icono del hechizo
             )
         ];
     }
@@ -558,7 +567,8 @@ export class SpellLibrary {
                 },
                 0, // Sin cooldown
                 'tierra', // Elemento tierra
-                '22-28' // Daño base
+                '22-28', // Daño base
+                'images/ui/spell-icons/archer/flecha_rocosa.png' // Icono del hechizo
             ),
             new Spell(
                 'Flecha Explosiva',
@@ -597,7 +607,8 @@ export class SpellLibrary {
                 },
                 1, // 1 turno de cooldown
                 'fuego', // Elemento fuego
-                '25-32' // Daño base
+                '25-32', // Daño base
+                'images/ui/spell-icons/archer/flecha_explosiva.png' // Icono del hechizo
             ),
             new Spell(
                 'Flecha de Hielo',
@@ -629,7 +640,8 @@ export class SpellLibrary {
                 },
                 0, // Sin cooldown
                 'agua', // Elemento agua
-                '20-26' // Daño base
+                '20-26', // Daño base
+                'images/ui/spell-icons/archer/flecha_de_hielo.png' // Icono del hechizo
             ),
             new Spell(
                 'Flecha del Viento',
@@ -661,7 +673,8 @@ export class SpellLibrary {
                 },
                 0, // Sin cooldown
                 'aire', // Elemento aire
-                '18-24' // Daño base
+                '18-24', // Daño base
+                '/assets/images/ui/spell-icons/archer/flecha_del_viento.png' // Icono del hechizo
             )
         ];
     }
@@ -723,7 +736,8 @@ export class SpellLibrary {
                     spell.effect,
                     spell.cooldown,
                     spell.element,
-                    spell.baseDamage
+                    spell.baseDamage,
+                    spell.iconPath
                 );
                 clonedSpell.level = backendSpell.level;
                 return clonedSpell;

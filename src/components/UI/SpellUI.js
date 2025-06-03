@@ -40,6 +40,7 @@ export class SpellUI {
             if (button.text) button.text.destroy();
             if (button.info) button.info.destroy();
             if (button.damage) button.damage.destroy();
+            if (button.icon) button.icon.destroy();
         });
         this.spellButtons = [];
 
@@ -56,10 +57,59 @@ export class SpellUI {
             // Obtener el hechizo real para información detallada
             const realSpell = this.player.spells[index];
 
-            // Texto del hechizo con nivel
+            // Icono del hechizo (si existe)
+            let spellIcon = null;
+            if (realSpell.iconPath) {
+                // Verificar si la textura existe en el cache
+                const textureKey = `spell_icon_${realSpell.name.replace(/\s+/g, '_').toLowerCase()}`;
+
+                if (this.scene.textures.exists(textureKey)) {
+                    // Si la textura ya está cargada, usarla
+                    spellIcon = this.scene.add.image(1100 - 45, y, textureKey);
+                    spellIcon.setDisplaySize(32, 32);
+                    spellIcon.setDepth(1502);
+                } else {
+                    // Intentar cargar la imagen dinámicamente
+                    this.scene.load.image(textureKey, realSpell.iconPath);
+                    this.scene.load.once('complete', () => {
+                        if (this.scene.textures.exists(textureKey)) {
+                            // Si se cargó exitosamente, reemplazar el círculo con la imagen
+                            if (spellIcon) spellIcon.destroy();
+                            spellIcon = this.scene.add.image(1100 - 45, y, textureKey);
+                            spellIcon.setDisplaySize(32, 32);
+                            spellIcon.setDepth(1502);
+                        }
+                    });
+                    this.scene.load.start();
+
+                    // Crear círculo temporal mientras se carga
+                    const elementColors = {
+                        tierra: 0x8B4513,
+                        fuego: 0xFF4400,
+                        agua: 0x00FFFF,
+                        aire: 0xCCCCCC
+                    };
+                    const color = elementColors[realSpell.element] || 0x666666;
+                    spellIcon = this.scene.add.circle(1100 - 45, y, 16, color, 0.8);
+                    spellIcon.setDepth(1502);
+                }
+            } else {
+                // Crear círculo de color elemental como fallback
+                const elementColors = {
+                    tierra: 0x8B4513,
+                    fuego: 0xFF4400,
+                    agua: 0x00FFFF,
+                    aire: 0xCCCCCC
+                };
+                const color = elementColors[realSpell.element] || 0x666666;
+                spellIcon = this.scene.add.circle(1100 - 45, y, 16, color, 0.8);
+                spellIcon.setDepth(1502);
+            }
+
+            // Texto del hechizo con nivel (ajustado para el icono)
             const spellNameWithLevel = `${spell.name} (Nv.${realSpell.level})`;
-            const buttonText = this.scene.add.text(1100, y - 15, spellNameWithLevel, {
-                fontSize: '11px',
+            const buttonText = this.scene.add.text(1100 - 10, y - 15, spellNameWithLevel, {
+                fontSize: '10px',
                 fontFamily: 'Arial',
                 color: spell.canCast ? '#ffffff' : '#666666',
                 fontStyle: 'bold'
@@ -67,8 +117,8 @@ export class SpellUI {
             buttonText.setOrigin(0.5);
             buttonText.setDepth(1502);
 
-            // Información de PA y Rango
-            const infoText = this.scene.add.text(1100, y, `PA:${spell.actionPointCost} Rango:${spell.range}`, {
+            // Información de PA y Rango (ajustado para el icono)
+            const infoText = this.scene.add.text(1100 - 10, y, `PA:${spell.actionPointCost} Rango:${spell.range}`, {
                 fontSize: '9px',
                 fontFamily: 'Arial',
                 color: spell.canCast ? '#ffff00' : '#444444'
@@ -76,9 +126,9 @@ export class SpellUI {
             infoText.setOrigin(0.5);
             infoText.setDepth(1502);
 
-            // Estimación de daño
+            // Estimación de daño (ajustado para el icono)
             const damageEstimate = realSpell.getDamageEstimate(this.player);
-            const damageText = this.scene.add.text(1100, y + 12, `Daño: ${damageEstimate}`, {
+            const damageText = this.scene.add.text(1100 - 10, y + 12, `Daño: ${damageEstimate}`, {
                 fontSize: '9px',
                 fontFamily: 'Arial',
                 color: spell.canCast ? '#00ff00' : '#444444'
@@ -118,6 +168,7 @@ export class SpellUI {
                 text: buttonText,
                 info: infoText,
                 damage: damageText,
+                icon: spellIcon,
                 spell: spell,
                 index: index
             });
@@ -129,6 +180,7 @@ export class SpellUI {
             this.elements.push(button.text);
             this.elements.push(button.info);
             this.elements.push(button.damage);
+            if (button.icon) this.elements.push(button.icon);
         });
     }
 
