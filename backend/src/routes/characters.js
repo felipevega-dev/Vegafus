@@ -162,7 +162,8 @@ router.post('/', async (req, res) => {
             class: characterClass,
             stats: initialStats,
             spells: getSpellsByClass(characterClass),
-            spellPoints: 3 // Puntos iniciales para probar el sistema
+            capitalPoints: 10, // Puntos iniciales de características
+            spellPoints: 1 // Puntos iniciales de hechizos
         });
 
         await character.save();
@@ -358,6 +359,54 @@ router.post('/:characterId/distribute-points', async (req, res) => {
         console.error('Error distribuyendo puntos:', error);
         res.status(500).json({
             message: 'Error interno del servidor'
+        });
+    }
+});
+
+// Ruta para corregir puntos faltantes de personajes existentes
+router.post('/:characterId/fix-points', async (req, res) => {
+    try {
+        const character = await Character.findOne({
+            _id: req.params.characterId,
+            userId: req.userId,
+            isActive: true
+        });
+
+        if (!character) {
+            return res.status(404).json({
+                message: 'Personaje no encontrado'
+            });
+        }
+
+        // Calcular puntos que debería tener según su nivel
+        const expectedCapitalPoints = 10 + ((character.level - 1) * 5); // 10 inicial + 5 por nivel
+        const expectedSpellPoints = 1 + (character.level - 1); // 1 inicial + 1 por nivel
+
+        // Corregir puntos si están por debajo de lo esperado
+        const capitalPointsToAdd = Math.max(0, expectedCapitalPoints - character.capitalPoints);
+        const spellPointsToAdd = Math.max(0, expectedSpellPoints - character.spellPoints);
+
+        character.capitalPoints += capitalPointsToAdd;
+        character.spellPoints += spellPointsToAdd;
+
+        await character.save();
+
+        res.json({
+            message: `Puntos corregidos: +${capitalPointsToAdd} capital, +${spellPointsToAdd} hechizo`,
+            character: character.toGameJSON(),
+            corrections: {
+                capitalPointsAdded: capitalPointsToAdd,
+                spellPointsAdded: spellPointsToAdd,
+                newCapitalPoints: character.capitalPoints,
+                newSpellPoints: character.spellPoints
+            }
+        });
+
+    } catch (error) {
+        console.error('Error corrigiendo puntos:', error);
+        res.status(500).json({
+            message: 'Error interno del servidor',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 });

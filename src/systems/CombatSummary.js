@@ -489,28 +489,16 @@ export class CombatSummary {
     }
 
     // Verificar si el jugador sube de nivel
+    // NOTA: Esta función está deshabilitada porque el level up ahora se maneja en el backend
+    // que otorga correctamente puntos de capital y hechizo
     static checkLevelUp(player, experienceGained) {
-        const oldLevel = player.level;
+        // Solo actualizar experiencia localmente, el backend manejará el level up
         player.experience += experienceGained;
-        
-        // Fórmula simple de nivel: cada 200 XP = 1 nivel
-        const newLevel = Math.floor(player.experience / 200) + 1;
-        
-        if (newLevel > oldLevel) {
-            player.level = newLevel;
-            
-            // Mejorar estadísticas al subir de nivel
-            player.maxHP += 20;
-            player.currentHP = player.maxHP; // Curación completa al subir nivel
-            // No hay MP en este juego, solo Action Points que se resetean cada turno
-            player.attack += 5;
-            player.defense += 3;
-            
-            console.log(`¡Nivel subido! Ahora eres nivel ${newLevel}`);
-            return true;
-        }
-        
-        return false;
+
+        console.log(`Experiencia ganada: +${experienceGained} (Total: ${player.experience})`);
+        console.log('⚠️ Level up será procesado por el backend al guardar progreso');
+
+        return false; // No procesar level up aquí
     }
 
     // Limpiar resumen de combate

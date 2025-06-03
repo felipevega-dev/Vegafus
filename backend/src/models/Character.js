@@ -23,7 +23,7 @@ const characterSchema = new mongoose.Schema({
         type: Number,
         default: 1,
         min: 1,
-        max: 100
+        max: 200
     },
     experience: {
         type: Number,
@@ -66,7 +66,7 @@ const characterSchema = new mongoose.Schema({
         aguaPercent: { type: Number, default: 0 },
         airePercent: { type: Number, default: 0 }
     },
-    capitalPoints: { type: Number, default: 0 }, // Puntos disponibles para distribuir
+    capitalPoints: { type: Number, default: 10 }, // Puntos disponibles para distribuir
 
     // Sistema de dinero
     kamas: { type: Number, default: 0 }, // Dinero del juego
@@ -89,7 +89,7 @@ const characterSchema = new mongoose.Schema({
         level: { type: Number, default: 1 },
         unlocked: { type: Boolean, default: true }
     }],
-    spellPoints: { type: Number, default: 0 }, // Puntos para subir hechizos
+    spellPoints: { type: Number, default: 1 }, // Puntos para subir hechizos
     achievements: [{
         achievementId: String,
         unlockedAt: { type: Date, default: Date.now }
@@ -133,12 +133,15 @@ characterSchema.methods.levelUp = function() {
         // Otorgar 5 puntos de capital por nivel
         this.capitalPoints += 5;
 
+        // Otorgar 1 punto de hechizo por nivel
+        this.spellPoints += 1;
+
         // Mejorar estadísticas básicas al subir nivel
         this.stats.hp.max += 20;
         this.stats.hp.current = this.stats.hp.max; // Curación completa
         // No hay MP en este juego, solo Action Points que se resetean cada turno
 
-        console.log(`Personaje subió de nivel ${oldLevel} → ${this.level}. Puntos de capital: +5 (Total: ${this.capitalPoints})`);
+        console.log(`Personaje subió de nivel ${oldLevel} → ${this.level}. Puntos de capital: +5 (Total: ${this.capitalPoints}), Puntos de hechizo: +1 (Total: ${this.spellPoints})`);
 
         return true;
     }
