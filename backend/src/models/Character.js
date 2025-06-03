@@ -136,10 +136,7 @@ characterSchema.methods.levelUp = function() {
         // Mejorar estadísticas básicas al subir nivel
         this.stats.hp.max += 20;
         this.stats.hp.current = this.stats.hp.max; // Curación completa
-        this.stats.mp.max += 10;
-        this.stats.mp.current = this.stats.mp.max;
-        this.stats.attack += 5;
-        this.stats.defense += 3;
+        // No hay MP en este juego, solo Action Points que se resetean cada turno
 
         console.log(`Personaje subió de nivel ${oldLevel} → ${this.level}. Puntos de capital: +5 (Total: ${this.capitalPoints})`);
 

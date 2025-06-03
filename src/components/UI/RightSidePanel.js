@@ -183,7 +183,7 @@ export class RightSidePanel {
         // Mostrar loading mientras carga
         this.createInventoryLoadingModal();
 
-        // Cargar inventario desde backend
+        // Cargar inventario desde backend para sincronizar
         await this.loadInventoryFromBackend();
 
         // Crear modal con datos actualizados
@@ -260,35 +260,43 @@ export class RightSidePanel {
             }
 
             const { apiClient } = await import('../../utils/ApiClient.js');
-            const response = await apiClient.getInventory(characterId);
 
-            if (response.success) {
+            // Usar el endpoint específico de inventario que incluye información completa de items
+            console.log('🔄 Cargando inventario con información completa desde backend...');
+            const inventoryResponse = await apiClient.getInventory(characterId);
+
+            if (inventoryResponse && inventoryResponse.success) {
+                const inventoryData = inventoryResponse.data;
+
                 // Actualizar datos del jugador con la información del backend
-                this.player.kamas = response.data.kamas || 0;
+                this.player.kamas = inventoryData.kamas || 0;
+                this.player.inventory = inventoryData.inventory || [];
 
-                // Convertir inventario del backend al formato local
-                this.player.inventory = response.data.inventory.map(invItem => {
-                    const item = {
-                        id: invItem.itemId,
-                        name: invItem.itemInfo?.name || invItem.itemId,
-                        type: invItem.itemInfo?.type || 'unknown',
-                        rarity: invItem.itemInfo?.rarity || 'common',
-                        value: invItem.itemInfo?.value || 0,
-                        description: invItem.itemInfo?.description || '',
-                        quantity: invItem.quantity,
-                        stackable: invItem.itemInfo?.stackable || false,
-                        maxStack: invItem.itemInfo?.maxStack || 1,
-                        obtainedAt: invItem.obtainedAt
-                    };
-                    return item;
-                });
-
-                console.log('✅ Inventario cargado desde backend:', {
+                console.log('✅ Inventario sincronizado desde backend:', {
                     kamas: this.player.kamas,
-                    items: this.player.inventory.length
+                    items: this.player.inventory.length,
+                    sampleItem: this.player.inventory[0] || 'No items'
                 });
+
+                // También cargar datos básicos del personaje
+                const characterResponse = await apiClient.getCharacter(characterId);
+                if (characterResponse && characterResponse.character) {
+                    const character = characterResponse.character;
+                    this.player.level = character.level || this.player.level;
+                    this.player.experience = character.experience || this.player.experience;
+                }
             } else {
-                console.error('❌ Error cargando inventario:', response.message);
+                console.error('❌ Error cargando inventario desde backend, usando fallback');
+
+                // Fallback: cargar datos básicos del personaje
+                const response = await apiClient.getCharacter(characterId);
+                if (response && response.character) {
+                    const character = response.character;
+                    this.player.kamas = character.kamas || 0;
+                    this.player.inventory = character.inventory || [];
+                    this.player.level = character.level || this.player.level;
+                    this.player.experience = character.experience || this.player.experience;
+                }
             }
         } catch (error) {
             console.error('❌ Error conectando con backend para inventario:', error);
@@ -345,14 +353,41 @@ export class RightSidePanel {
         } else {
             inventoryText += `📦 Objetos: ${items.length}\n\n`;
             items.forEach((item, index) => {
-                const rarityColor = this.getItemRaritySymbol(item.rarity);
-                inventoryText += `${index + 1}. ${rarityColor} ${item.name}`;
-                if (item.stackable && item.quantity > 1) {
-                    inventoryText += ` (x${item.quantity})`;
+                // Determinar información del item
+                let itemName = 'Item desconocido';
+                let itemRarity = 'common';
+                let itemDescription = '';
+                let isStackable = false;
+                let quantity = 1;
+
+                if (item.itemInfo) {
+                    // Item con información completa del backend
+                    itemName = item.itemInfo.name || 'Item';
+                    itemRarity = item.itemInfo.rarity || 'common';
+                    itemDescription = item.itemInfo.description || '';
+                    isStackable = item.itemInfo.stackable || false;
+                    quantity = item.quantity || 1;
+                } else if (item.name) {
+                    // Item con información directa
+                    itemName = item.name;
+                    itemRarity = item.rarity || 'common';
+                    itemDescription = item.description || '';
+                    isStackable = item.stackable || false;
+                    quantity = item.quantity || 1;
+                } else {
+                    // Item solo con itemId
+                    itemName = item.itemId || 'Unknown';
+                    quantity = item.quantity || 1;
+                }
+
+                const rarityColor = this.getItemRaritySymbol(itemRarity);
+                inventoryText += `${index + 1}. ${rarityColor} ${itemName}`;
+                if (isStackable && quantity > 1) {
+                    inventoryText += ` (x${quantity})`;
                 }
                 inventoryText += '\n';
-                if (item.description) {
-                    inventoryText += `   ${item.description}\n`;
+                if (itemDescription) {
+                    inventoryText += `   ${itemDescription}\n`;
                 }
                 inventoryText += '\n';
             });

@@ -207,13 +207,18 @@ router.put('/:characterId', async (req, res) => {
         const allowedUpdates = [
             'level', 'experience', 'stats', 'position',
             'inventory', 'gameStats', 'characteristics', 'capitalPoints',
-            'resistances', 'damageBonus', 'spells', 'spellPoints'
+            'resistances', 'damageBonus', 'spells', 'spellPoints', 'kamas'
         ];
 
         // Actualizar solo los campos permitidos
         allowedUpdates.forEach(field => {
             if (req.body[field] !== undefined) {
-                character[field] = req.body[field];
+                if (field === 'stats') {
+                    // Manejar stats de forma especial para evitar sobrescribir campos existentes
+                    character.stats = { ...character.stats, ...req.body[field] };
+                } else {
+                    character[field] = req.body[field];
+                }
             }
         });
 
@@ -234,8 +239,11 @@ router.put('/:characterId', async (req, res) => {
 
     } catch (error) {
         console.error('Error actualizando personaje:', error);
+        console.error('Request body:', req.body);
+        console.error('Character ID:', req.params.characterId);
         res.status(500).json({
-            message: 'Error interno del servidor'
+            message: 'Error interno del servidor',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 });

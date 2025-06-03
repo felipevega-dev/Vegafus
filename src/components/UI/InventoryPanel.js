@@ -209,27 +209,52 @@ export class InventoryPanel {
 
         // Cargar items del jugador
         const inventory = this.player.inventory || [];
-        
+
         inventory.forEach((item, index) => {
             if (index < this.totalSlots) {
                 const slot = this.slots[index];
                 slot.item = item;
 
+                // Determinar el nombre del item
+                let itemName = 'Item';
+                let itemRarity = 'common';
+                let isStackable = false;
+                let quantity = 1;
+
+                // Verificar si el item tiene información completa (itemInfo) o solo itemId
+                if (item.itemInfo) {
+                    // Item con información completa del backend
+                    itemName = item.itemInfo.name || 'Item';
+                    itemRarity = item.itemInfo.rarity || 'common';
+                    isStackable = item.itemInfo.stackable || false;
+                    quantity = item.quantity || 1;
+                } else if (item.name) {
+                    // Item con información directa
+                    itemName = item.name;
+                    itemRarity = item.rarity || 'common';
+                    isStackable = item.stackable || false;
+                    quantity = item.quantity || 1;
+                } else {
+                    // Item solo con itemId (fallback)
+                    itemName = item.itemId || 'Unknown';
+                    quantity = item.quantity || 1;
+                }
+
                 // Crear representación visual del item
                 // Por ahora usamos texto, pero se puede cambiar por sprites
-                slot.itemText = this.scene.add.text(slot.x, slot.y, item.name.charAt(0).toUpperCase(), {
+                slot.itemText = this.scene.add.text(slot.x, slot.y, itemName.charAt(0).toUpperCase(), {
                     fontSize: '16px',
                     fontFamily: 'Arial',
-                    color: this.getItemColor(item.rarity || 'common'),
+                    color: this.getItemColor(itemRarity),
                     fontStyle: 'bold'
                 });
                 slot.itemText.setOrigin(0.5);
                 slot.itemText.setDepth(2002);
                 this.elements.push(slot.itemText);
 
-                // Mostrar cantidad si es stackeable
-                if (item.stackable && item.quantity > 1) {
-                    slot.quantityText = this.scene.add.text(slot.x + 12, slot.y + 12, item.quantity.toString(), {
+                // Mostrar cantidad si es stackeable y mayor a 1
+                if (isStackable && quantity > 1) {
+                    slot.quantityText = this.scene.add.text(slot.x + 12, slot.y + 12, quantity.toString(), {
                         fontSize: '10px',
                         fontFamily: 'Arial',
                         color: '#ffffff',
@@ -285,17 +310,35 @@ export class InventoryPanel {
             return;
         }
 
-        let info = `${item.name}\n\n`;
-        info += `Tipo: ${item.type || 'Objeto'}\n`;
-        info += `Rareza: ${item.rarity || 'Común'}\n\n`;
-        
-        if (item.description) {
-            info += `${item.description}\n\n`;
+        // Determinar la información del item
+        let itemData = null;
+        if (item.itemInfo) {
+            itemData = item.itemInfo;
+        } else if (item.name) {
+            itemData = item;
+        } else {
+            // Solo tenemos itemId
+            this.itemInfoText.setText(`Item ID: ${item.itemId || 'Unknown'}\nCantidad: ${item.quantity || 1}\n\nInformación no disponible`);
+            return;
         }
 
-        if (item.stats) {
+        let info = `${itemData.name || 'Item desconocido'}\n\n`;
+        info += `Tipo: ${itemData.type || 'Objeto'}\n`;
+        info += `Rareza: ${itemData.rarity || 'Común'}\n`;
+
+        if (item.quantity && item.quantity > 1) {
+            info += `Cantidad: ${item.quantity}\n`;
+        }
+
+        info += '\n';
+
+        if (itemData.description) {
+            info += `${itemData.description}\n\n`;
+        }
+
+        if (itemData.stats) {
             info += 'Estadísticas:\n';
-            Object.entries(item.stats).forEach(([stat, value]) => {
+            Object.entries(itemData.stats).forEach(([stat, value]) => {
                 info += `${stat}: +${value}\n`;
             });
         }

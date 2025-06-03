@@ -218,6 +218,21 @@ export class TurnManager {
         // Actualizar UI del jugador después de aplicar drops
         this.updateTurnUI();
 
+        // Actualizar datos del jugador en el registro para que estén disponibles
+        this.scene.registry.set('playerData', {
+            gridX: player.gridX,
+            gridY: player.gridY,
+            currentHP: player.currentHP,
+            maxHP: player.maxHP,
+            level: player.level,
+            experience: player.experience,
+            playerClass: player.playerClass,
+            attack: player.attack,
+            defense: player.defense,
+            kamas: player.kamas,
+            inventory: player.inventory
+        });
+
         // Mostrar resumen de combate (ahora incluirá los drops)
         this.combatSummary.showSummary(this.defeatedEnemies, experienceGained, player, drops);
     }

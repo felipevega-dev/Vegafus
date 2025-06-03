@@ -72,6 +72,12 @@ export class ExplorationMapRefactored extends Phaser.Scene {
         // Obtener ID del personaje (puede venir de la selección o del combate)
         this.currentCharacterId = data?.characterId || this.registry.get('currentCharacterId') || null;
 
+        // Detectar si viene del combate
+        this.comingFromCombat = data?.comingFromCombat || false;
+        if (this.comingFromCombat) {
+            console.log('🔄 Detectado regreso del combate, se refrescará la UI');
+        }
+
         if (this.currentCharacterId) {
             console.log('🎭 Personaje seleccionado ID:', this.currentCharacterId);
         }
@@ -84,7 +90,7 @@ export class ExplorationMapRefactored extends Phaser.Scene {
     }
 
     async createPlayer() {
-        this.playerManager = new PlayerManager(this, this.userData, this.currentCharacterId);
+        this.playerManager = new PlayerManager(this, this.userData, this.currentCharacterId, this.comingFromCombat);
         this.player = await this.playerManager.createPlayer();
         
         // Actualizar el sistema de guardado con el jugador
@@ -95,6 +101,13 @@ export class ExplorationMapRefactored extends Phaser.Scene {
         // Actualizar UI después de crear el jugador (con delay para asegurar que todo esté listo)
         this.time.delayedCall(100, () => {
             this.updatePlayerUI();
+
+            // Si viene del combate, refrescar UI adicional
+            if (this.comingFromCombat) {
+                this.time.delayedCall(200, () => {
+                    this.refreshUIAfterCombat();
+                });
+            }
         });
     }
 
@@ -185,7 +198,28 @@ export class ExplorationMapRefactored extends Phaser.Scene {
             console.log('🎒 Creando panel de inventario...');
             this.inventoryPanel = new InventoryPanel(this, this.player);
             this.inventoryPanel.create();
+            this.inventoryPanel.hide(); // Asegurar que esté oculto por defecto
         }
+    }
+
+    // Método para refrescar UI después del combate
+    refreshUIAfterCombat() {
+        console.log('🔄 Refrescando UI después del combate...');
+
+        // Actualizar UI del jugador
+        this.updatePlayerUI();
+
+        // Refrescar panel de inventario si existe
+        if (this.inventoryPanel) {
+            this.inventoryPanel.refreshInventory();
+        }
+
+        // Refrescar panel lateral derecho si existe
+        if (this.rightSidePanel) {
+            this.rightSidePanel.player = this.player; // Actualizar referencia del jugador
+        }
+
+        console.log('✅ UI refrescada correctamente');
     }
 
     openCharacteristics() {

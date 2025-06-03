@@ -5,12 +5,12 @@ import { Player } from '@classes/Player.js';
 import { ItemLibrary } from '@data/ItemLibrary.js';
 
 export class PlayerManager {
-    constructor(scene, userData, currentCharacterId) {
+    constructor(scene, userData, currentCharacterId, comingFromCombat = false) {
         this.scene = scene;
         this.userData = userData;
         this.currentCharacterId = currentCharacterId;
         this.player = null;
-        this.comingFromCombat = false;
+        this.comingFromCombat = comingFromCombat || this.scene.registry.get('comingFromCombat') || false;
     }
 
     async createPlayer() {
@@ -152,11 +152,35 @@ export class PlayerManager {
                 tierraPercent: 0, fuegoPercent: 0, aguaPercent: 0, airePercent: 0
             };
 
-            // Cargar inventario (si existe) o agregar objetos iniciales
-            if (character.inventory && character.inventory.length > 0) {
-                this.player.inventory = character.inventory;
-            } else {
-                this.loadStarterItems(character.class);
+            // Cargar dinero (kamas)
+            this.player.kamas = character.kamas || 0;
+            console.log(`💰 Kamas cargadas: ${this.player.kamas}`);
+
+            // Cargar inventario enriquecido desde el endpoint específico
+            try {
+                const inventoryResponse = await apiClient.getInventory(character.id);
+                if (inventoryResponse && inventoryResponse.success) {
+                    this.player.inventory = inventoryResponse.data.inventory || [];
+                    this.player.kamas = inventoryResponse.data.kamas || this.player.kamas; // Actualizar kamas también
+                    console.log(`🎒 Inventario enriquecido cargado: ${this.player.inventory.length} items`);
+                } else {
+                    // Fallback al inventario básico del personaje
+                    if (character.inventory && character.inventory.length > 0) {
+                        this.player.inventory = character.inventory;
+                        console.log(`🎒 Inventario básico cargado: ${this.player.inventory.length} items`);
+                    } else {
+                        this.loadStarterItems(character.class);
+                    }
+                }
+            } catch (inventoryError) {
+                console.error('❌ Error cargando inventario enriquecido:', inventoryError);
+                // Fallback al inventario básico del personaje
+                if (character.inventory && character.inventory.length > 0) {
+                    this.player.inventory = character.inventory;
+                    console.log(`🎒 Inventario básico cargado (fallback): ${this.player.inventory.length} items`);
+                } else {
+                    this.loadStarterItems(character.class);
+                }
             }
 
             // Guardar ID del personaje para futuras actualizaciones
@@ -220,7 +244,11 @@ export class PlayerManager {
                 this.player.level = savedPlayerData.level || 1;
                 this.player.experience = savedPlayerData.experience || 0;
 
-                console.log(`Jugador restaurado localmente: Nivel ${this.player.level}, XP: ${this.player.experience}`);
+                // Restaurar kamas e inventario si existen
+                this.player.kamas = savedPlayerData.kamas || 0;
+                this.player.inventory = savedPlayerData.inventory || [];
+
+                console.log(`Jugador restaurado localmente: Nivel ${this.player.level}, XP: ${this.player.experience}, Kamas: ${this.player.kamas}`);
             } else {
                 // Crear jugador completamente nuevo
                 this.player = new Player(this.scene, 5, 10, 'mage');

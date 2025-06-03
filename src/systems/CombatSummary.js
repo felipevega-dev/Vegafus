@@ -319,6 +319,9 @@ export class CombatSummary {
     async returnToExploration() {
         console.log('Volviendo al mapa de exploración...');
 
+        // Limpiar cualquier UI existente antes de cambiar de escena
+        this.clearSummary();
+
         // Crear mensaje de guardado
         const saveMessage = this.scene.add.text(640, 360, 'Guardando progreso...', {
             fontSize: '24px',
@@ -340,17 +343,32 @@ export class CombatSummary {
             console.log(`✅ Progreso guardado en backend: Nivel ${this.player.level}, XP: ${this.player.experience}`);
         } catch (error) {
             console.error('❌ Error guardando progreso:', error);
-            saveMessage.setText('⚠️ Error guardando (usando datos locales)');
 
-            // Fallback: guardar localmente
-            this.saveProgressLocally();
+            // Intentar guardar con datos actualizados del registro
+            try {
+                await this.saveProgressFromRegistry();
+                saveMessage.setText('✅ Progreso guardado (datos actualizados)');
+            } catch (fallbackError) {
+                console.error('❌ Error en fallback:', fallbackError);
+                saveMessage.setText('⚠️ Error guardando (usando datos locales)');
+                // Fallback: guardar localmente
+                this.saveProgressLocally();
+            }
         }
 
         // Después de 1.5 segundos, cambiar a la escena de exploración
         this.scene.time.delayedCall(1500, () => {
+            // Limpiar mensaje de guardado
+            saveMessage.destroy();
+
             // Pasar datos del usuario para mantener la sesión
             const userData = this.scene.registry.get('userData');
-            this.scene.scene.start('ExplorationMapRefactored', { user: userData });
+
+            // Cambiar a la escena de exploración
+            this.scene.scene.start('ExplorationMapRefactored', {
+                user: userData,
+                comingFromCombat: true // Indicar que viene del combate
+            });
         });
     }
 
@@ -384,6 +402,45 @@ export class CombatSummary {
             kamas: this.player.kamas,
             inventory: this.player.inventory,
             characteristics: this.player.characteristics,
+            // Marcar que viene de combate para indicar ganancia de experiencia
+            combatResult: 'victory',
+            enemiesDefeated: this.defeatedEnemies.length,
+            dropsObtained: this.drops
+        };
+
+        await apiClient.saveProgress(characterId, gameData);
+    }
+
+    async saveProgressFromRegistry() {
+        const userData = this.scene.registry.get('userData');
+        const characterId = this.scene.registry.get('currentCharacterId');
+        const playerData = this.scene.registry.get('playerData');
+
+        if (!userData || !characterId || !playerData) {
+            throw new Error('No hay datos actualizados en el registro');
+        }
+
+        // Importar API client dinámicamente
+        const { apiClient } = await import('../utils/ApiClient.js');
+
+        const gameData = {
+            level: playerData.level,
+            experience: playerData.experience,
+            stats: {
+                hp: {
+                    current: playerData.currentHP,
+                    max: playerData.maxHP
+                },
+                attack: playerData.attack,
+                defense: playerData.defense
+            },
+            position: {
+                x: playerData.gridX,
+                y: playerData.gridY
+            },
+            // Datos de dinero e inventario desde el registro actualizado
+            kamas: playerData.kamas,
+            inventory: playerData.inventory,
             // Marcar que viene de combate para indicar ganancia de experiencia
             combatResult: 'victory',
             enemiesDefeated: this.defeatedEnemies.length,
@@ -445,8 +502,7 @@ export class CombatSummary {
             // Mejorar estadísticas al subir de nivel
             player.maxHP += 20;
             player.currentHP = player.maxHP; // Curación completa al subir nivel
-            player.maxMP += 10;
-            player.currentMP = player.maxMP;
+            // No hay MP en este juego, solo Action Points que se resetean cada turno
             player.attack += 5;
             player.defense += 3;
             
@@ -455,5 +511,37 @@ export class CombatSummary {
         }
         
         return false;
+    }
+
+    // Limpiar resumen de combate
+    clearSummary() {
+        if (!this.isVisible) return;
+
+        // Limpiar todos los elementos del resumen
+        this.summaryElements.forEach(element => {
+            if (element && element.destroy) {
+                element.destroy();
+            }
+        });
+
+        // Limpiar también cualquier elemento de UI que pueda haber quedado
+        if (this.scene && this.scene.children) {
+            const uiElements = this.scene.children.list.filter(child =>
+                child.depth >= 2000 && // Elementos de UI con depth alto
+                child.type !== 'Graphics' && // No limpiar gráficos del mapa
+                child !== this.scene.player // No limpiar el jugador
+            );
+
+            uiElements.forEach(element => {
+                if (element && element.destroy) {
+                    element.destroy();
+                }
+            });
+        }
+
+        this.summaryElements = [];
+        this.isVisible = false;
+
+        console.log('🧹 UI de combate limpiada completamente');
     }
 }
