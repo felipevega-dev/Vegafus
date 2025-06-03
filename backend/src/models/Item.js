@@ -38,6 +38,10 @@ const itemSchema = new mongoose.Schema({
         type: Number,
         default: 1
     },
+    subtype: {
+        type: String,
+        default: null // Para equipamiento: 'helmet', 'armor', 'weapon', 'shield', 'boots', 'belt', 'amulet', 'ring'
+    },
     stats: {
         type: mongoose.Schema.Types.Mixed, // Para equipamiento
         default: null

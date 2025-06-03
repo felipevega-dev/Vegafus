@@ -84,6 +84,55 @@ const characterSchema = new mongoose.Schema({
         equipped: { type: Boolean, default: false },
         obtainedAt: { type: Date, default: Date.now }
     }],
+
+    // Sistema de equipamiento
+    equipment: {
+        helmet: {
+            itemId: { type: String, default: null },
+            quantity: { type: Number, default: 1 },
+            equippedAt: { type: Date, default: null }
+        },
+        amulet: {
+            itemId: { type: String, default: null },
+            quantity: { type: Number, default: 1 },
+            equippedAt: { type: Date, default: null }
+        },
+        ring1: {
+            itemId: { type: String, default: null },
+            quantity: { type: Number, default: 1 },
+            equippedAt: { type: Date, default: null }
+        },
+        ring2: {
+            itemId: { type: String, default: null },
+            quantity: { type: Number, default: 1 },
+            equippedAt: { type: Date, default: null }
+        },
+        weapon: {
+            itemId: { type: String, default: null },
+            quantity: { type: Number, default: 1 },
+            equippedAt: { type: Date, default: null }
+        },
+        armor: {
+            itemId: { type: String, default: null },
+            quantity: { type: Number, default: 1 },
+            equippedAt: { type: Date, default: null }
+        },
+        shield: {
+            itemId: { type: String, default: null },
+            quantity: { type: Number, default: 1 },
+            equippedAt: { type: Date, default: null }
+        },
+        belt: {
+            itemId: { type: String, default: null },
+            quantity: { type: Number, default: 1 },
+            equippedAt: { type: Date, default: null }
+        },
+        boots: {
+            itemId: { type: String, default: null },
+            quantity: { type: Number, default: 1 },
+            equippedAt: { type: Date, default: null }
+        }
+    },
     spells: [{
         spellId: String,
         level: { type: Number, default: 1 },
@@ -164,6 +213,7 @@ characterSchema.methods.toGameJSON = function() {
         kamas: this.kamas, // Incluir dinero
         position: this.position,
         inventory: this.inventory, // Incluir inventario
+        equipment: this.equipment, // Incluir equipamiento
         spells: this.spells,
         spellPoints: this.spellPoints,
         gameStats: this.gameStats,

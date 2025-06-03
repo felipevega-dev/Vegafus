@@ -118,6 +118,15 @@ try {
     process.exit(1);
 }
 
+try {
+    console.log('⚔️ Cargando rutas de equipamiento...');
+    app.use('/api/equipment', require('./routes/equipment'));
+    console.log('✅ Rutas de equipamiento cargadas');
+} catch (error) {
+    console.error('❌ Error cargando rutas de equipamiento:', error.message);
+    process.exit(1);
+}
+
 // Middleware de manejo de errores
 app.use((err, req, res, next) => {
     console.error(err.stack);

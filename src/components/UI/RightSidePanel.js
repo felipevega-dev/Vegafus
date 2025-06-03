@@ -1,4 +1,5 @@
 import { LayoutConfig, LayoutUtils } from '@config/LayoutConfig.js';
+import { InventoryModal } from './InventoryModal.js';
 
 /**
  * Panel lateral derecho con acceso a inventario, características, hechizos, etc.
@@ -10,7 +11,10 @@ export class RightSidePanel {
         this.elements = [];
         this.isVisible = true;
         this.activePanel = null; // 'inventory', 'characteristics', 'spells', etc.
-        
+
+        // Inicializar el nuevo modal de inventario
+        this.inventoryModal = new InventoryModal(scene, player);
+
         this.create();
     }
 
@@ -178,17 +182,16 @@ export class RightSidePanel {
     }
 
     async showInventoryModal() {
-        console.log('🎒 Abriendo modal de inventario...');
-
-        // Mostrar loading mientras carga
-        this.createInventoryLoadingModal();
+        console.log('🎒 Abriendo modal de inventario mejorado...');
 
         // Cargar inventario desde backend para sincronizar
         await this.loadInventoryFromBackend();
 
-        // Crear modal con datos actualizados
-        this.hideInventoryModal(); // Limpiar loading
-        this.createInventoryModal();
+        // Cargar equipamiento desde backend
+        await this.loadEquipmentFromBackend();
+
+        // Mostrar el nuevo modal de inventario
+        this.inventoryModal.show();
     }
 
     createInventoryLoadingModal() {
@@ -300,6 +303,39 @@ export class RightSidePanel {
             }
         } catch (error) {
             console.error('❌ Error conectando con backend para inventario:', error);
+        }
+    }
+
+    async loadEquipmentFromBackend() {
+        try {
+            const characterId = this.scene.registry.get('currentCharacterId');
+            if (!characterId) {
+                console.warn('⚠️ No se encontró ID del personaje para equipamiento');
+                return;
+            }
+
+            console.log('🔄 Cargando equipamiento desde backend...');
+            const response = await fetch(`/api/equipment/${characterId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const equipmentResponse = await response.json();
+                if (equipmentResponse.success) {
+                    this.player.equipment = equipmentResponse.data;
+                    console.log('✅ Equipamiento sincronizado desde backend:', this.player.equipment);
+                } else {
+                    console.error('❌ Error en respuesta de equipamiento:', equipmentResponse.message);
+                }
+            } else {
+                console.error('❌ Error HTTP cargando equipamiento:', response.status);
+            }
+        } catch (error) {
+            console.error('❌ Error conectando con backend para equipamiento:', error);
         }
     }
 
@@ -1066,6 +1102,11 @@ export class RightSidePanel {
     }
 
     destroy() {
+        // Destruir el modal de inventario mejorado
+        if (this.inventoryModal) {
+            this.inventoryModal.destroy();
+        }
+
         // Limpiar todos los modales si existen
         this.hideConfigModal();
         this.hideInventoryModal();
