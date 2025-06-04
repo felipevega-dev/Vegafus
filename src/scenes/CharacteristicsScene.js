@@ -486,29 +486,9 @@ export class CharacteristicsScene extends Phaser.Scene {
         }
     }
 
-    debugToken() {
-        console.log('🔍 DEBUG TOKEN:');
-        console.log('token:', localStorage.getItem('token'));
-        console.log('authToken:', localStorage.getItem('authToken'));
-        console.log('userData:', this.userData);
-        console.log('characterId:', this.characterId);
-
-        // Mostrar en pantalla también
-        const debugMessage = this.add.text(640, 580,
-            `Token: ${localStorage.getItem('token') ? 'SÍ' : 'NO'} | AuthToken: ${localStorage.getItem('authToken') ? 'SÍ' : 'NO'}`, {
-            fontSize: '12px',
-            fontFamily: 'Arial',
-            color: '#ffff00'
-        }).setOrigin(0.5);
-
-        this.time.delayedCall(3000, () => {
-            debugMessage.destroy();
-        });
-    }
-
     resetChanges() {
-        // Aquí podrías implementar un reset a los valores originales
-        console.log('Reset no implementado aún');
+        // TODO: Implementar reset a los valores originales
+        console.warn('Reset de características no implementado aún');
     }
 
     async loadEquipmentStats() {

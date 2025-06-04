@@ -380,7 +380,7 @@ export class ExplorationMap extends Phaser.Scene {
                 throw new Error('No se pudo crear el jugador');
             }
 
-            console.log(`Jugador creado en posición: ${this.player.gridX}, ${this.player.gridY}`);
+
         } catch (error) {
             console.error('Error creando jugador por defecto:', error);
             // Crear jugador básico como último recurso
@@ -565,7 +565,7 @@ export class ExplorationMap extends Phaser.Scene {
         this.registry.set('userData', this.userData);
         this.registry.set('currentCharacterId', this.currentCharacterId);
 
-        console.log(`Datos guardados: Nivel ${this.player.level}, XP: ${this.player.experience}`);
+
 
         // Cambiar a escena de combate
         this.scene.start('IsometricMap');

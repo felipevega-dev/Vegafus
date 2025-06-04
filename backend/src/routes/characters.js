@@ -211,11 +211,7 @@ router.put('/:characterId', async (req, res) => {
             'resistances', 'damageBonus', 'spells', 'spellPoints', 'kamas'
         ];
 
-        // Debug: Log de datos recibidos
-        console.log('📥 Datos recibidos para actualizar personaje:');
-        console.log('   - capitalPoints:', req.body.capitalPoints);
-        console.log('   - characteristics:', req.body.characteristics);
-        console.log('   - experience:', req.body.experience);
+
 
         // Verificar si se está actualizando la experiencia para manejar level ups
         const oldExperience = character.experience;
@@ -233,7 +229,7 @@ router.put('/:characterId', async (req, res) => {
                 } else if (field === 'characteristics') {
                     // Manejar características de forma especial para evitar sobrescribir campos existentes
                     character.characteristics = { ...character.characteristics, ...req.body[field] };
-                    console.log('🔧 Características actualizadas:', character.characteristics);
+
                 } else if (field === 'resistances') {
                     // Manejar resistencias de forma especial
                     character.resistances = { ...character.resistances, ...req.body[field] };
@@ -268,17 +264,11 @@ router.put('/:characterId', async (req, res) => {
 
         // Solo procesar level up si la experiencia aumentó (no disminuyó)
         if (experienceUpdated && character.experience > oldExperience) {
-            console.log(`📈 Experiencia actualizada: ${oldExperience} → ${character.experience}`);
-
             // Verificar si puede subir de nivel
             let levelsGained = 0;
             while (character.canLevelUp()) {
                 character.levelUp();
                 levelsGained++;
-            }
-
-            if (levelsGained > 0) {
-                console.log(`🎉 ¡Subió ${levelsGained} nivel(es)! Nuevos puntos otorgados.`);
             }
         }
 
@@ -300,9 +290,7 @@ router.put('/:characterId', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error actualizando personaje:', error);
-        console.error('Request body:', req.body);
-        console.error('Character ID:', req.params.characterId);
+        console.error('Error actualizando personaje:', error.message);
         res.status(500).json({
             message: 'Error interno del servidor',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined

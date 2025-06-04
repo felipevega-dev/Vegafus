@@ -359,26 +359,21 @@ export class Combat extends Phaser.Scene {
 
     // Método para limpiar elementos de texto que puedan haber quedado
     cleanupRemainingTextElements() {
-        console.log('🧹 Limpiando elementos de texto restantes...');
-
         // Buscar y destruir todos los elementos de texto con depth alto (UI)
         if (this.children && this.children.list) {
             const textElements = this.children.list.filter(child => {
                 return child.type === 'Text' && child.depth >= 1000;
             });
 
-            if (textElements.length > 0) {
-                console.log(`🧹 Encontrados ${textElements.length} elementos de texto para limpiar`);
-                textElements.forEach(element => {
-                    try {
-                        if (element && element.destroy) {
-                            element.destroy();
-                        }
-                    } catch (error) {
-                        console.warn('Error limpiando elemento de texto:', error);
+            textElements.forEach(element => {
+                try {
+                    if (element && element.destroy) {
+                        element.destroy();
                     }
-                });
-            }
+                } catch (error) {
+                    console.warn('Error limpiando elemento de texto:', error);
+                }
+            });
         }
 
         // También limpiar elementos de imagen/gráficos de UI
@@ -388,21 +383,16 @@ export class Combat extends Phaser.Scene {
                        child.depth >= 1500;
             });
 
-            if (uiElements.length > 0) {
-                console.log(`🧹 Encontrados ${uiElements.length} elementos de UI para limpiar`);
-                uiElements.forEach(element => {
-                    try {
-                        if (element && element.destroy) {
-                            element.destroy();
-                        }
-                    } catch (error) {
-                        console.warn('Error limpiando elemento de UI:', error);
+            uiElements.forEach(element => {
+                try {
+                    if (element && element.destroy) {
+                        element.destroy();
                     }
-                });
-            }
+                } catch (error) {
+                    console.warn('Error limpiando elemento de UI:', error);
+                }
+            });
         }
-
-        console.log('🧹 Limpieza de elementos restantes completada');
     }
 
     destroy() {

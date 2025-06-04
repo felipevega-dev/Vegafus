@@ -20,11 +20,8 @@ export class PlayerManager {
 
             // Si hay usuario autenticado, SIEMPRE cargar del backend
             if (this.userData) {
-                console.log('🔍 Usuario autenticado detectado, cargando desde backend...');
-
                 // Verificar que tenemos un characterId válido
                 if (!this.currentCharacterId) {
-                    console.log('❌ No hay characterId válido');
                     throw new Error('No se ha seleccionado un personaje válido. Debes seleccionar un personaje desde la galería.');
                 }
 
@@ -33,10 +30,8 @@ export class PlayerManager {
                 // Limpiar datos locales obsoletos si viene del combate
                 if (this.comingFromCombat) {
                     this.scene.registry.remove('playerData');
-                    console.log('🔄 Datos del combate limpiados, usando datos frescos del backend');
                 }
             } else {
-                console.log('❌ No hay usuario autenticado');
                 throw new Error('Usuario no autenticado. Debes iniciar sesión primero.');
             }
 
@@ -49,7 +44,7 @@ export class PlayerManager {
             this.player.maxMovementPoints = 999;
             this.player.currentMovementPoints = 999;
 
-            console.log('✅ Jugador creado exitosamente:', this.player.gridX, this.player.gridY);
+
             return this.player;
         } catch (error) {
             console.error('❌ Error crítico creando jugador:', error);
@@ -181,8 +176,7 @@ export class PlayerManager {
             // Guardar ID del personaje para futuras actualizaciones
             this.currentCharacterId = character.id;
 
-            console.log(`✅ Personaje sincronizado: ${character.name} - Nivel ${this.player.level}, XP: ${this.player.experience}/${this.player.level * 200}`);
-            console.log(`💰 Puntos de capital: ${this.player.capitalPoints}`);
+
 
             // Mostrar mensaje temporal si viene del combate
             if (this.comingFromCombat && this.scene.notificationSystem) {
@@ -191,7 +185,6 @@ export class PlayerManager {
             }
         } else {
             // No se encontró el personaje
-            console.log('❌ No se encontró el personaje con ID:', this.currentCharacterId);
             throw new Error('El personaje seleccionado no existe o no tienes acceso a él');
         }
     }

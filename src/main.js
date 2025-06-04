@@ -27,14 +27,5 @@ const config = {
     }
 };
 
-const game = new Phaser.Game(config);
-
-
-
-
-
-
-
-
-
-
+// Inicializar el juego
+new Phaser.Game(config);

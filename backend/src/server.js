@@ -62,7 +62,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/dofus-gam
     });
 
 // Rutas básicas
-app.get('/', (req, res) => {
+app.get('/', (_, res) => {
     res.json({
         message: '🎮 Dofus Backend API',
         version: '1.0.0',
@@ -70,66 +70,23 @@ app.get('/', (req, res) => {
     });
 });
 
-// Rutas de la API - Cargar una por una para detectar errores
-console.log('🔄 Cargando rutas...');
-
+// Rutas de la API
 try {
-    console.log('📝 Cargando rutas de autenticación...');
     app.use('/api/auth', require('./routes/auth'));
-    console.log('✅ Rutas de autenticación cargadas');
-} catch (error) {
-    console.error('❌ Error cargando rutas de autenticación:', error.message);
-    process.exit(1);
-}
-
-try {
-    console.log('👤 Cargando rutas de personajes...');
     app.use('/api/characters', require('./routes/characters'));
-    console.log('✅ Rutas de personajes cargadas');
-} catch (error) {
-    console.error('❌ Error cargando rutas de personajes:', error.message);
-    process.exit(1);
-}
-
-try {
-    console.log('🎮 Cargando rutas de juego...');
     app.use('/api/game', require('./routes/game'));
-    console.log('✅ Rutas de juego cargadas');
-} catch (error) {
-    console.error('❌ Error cargando rutas de juego:', error.message);
-    process.exit(1);
-}
-
-try {
-    console.log('📦 Cargando rutas de items...');
     app.use('/api/items', require('./routes/items'));
-    console.log('✅ Rutas de items cargadas');
-} catch (error) {
-    console.error('❌ Error cargando rutas de items:', error.message);
-    process.exit(1);
-}
-
-try {
-    console.log('🎒 Cargando rutas de inventario...');
     app.use('/api/inventory', require('./routes/inventory'));
-    console.log('✅ Rutas de inventario cargadas');
-} catch (error) {
-    console.error('❌ Error cargando rutas de inventario:', error.message);
-    process.exit(1);
-}
-
-try {
-    console.log('⚔️ Cargando rutas de equipamiento...');
     app.use('/api/equipment', require('./routes/equipment'));
-    console.log('✅ Rutas de equipamiento cargadas');
+    console.log('✅ Todas las rutas cargadas exitosamente');
 } catch (error) {
-    console.error('❌ Error cargando rutas de equipamiento:', error.message);
+    console.error('❌ Error cargando rutas:', error.message);
     process.exit(1);
 }
 
 // Middleware de manejo de errores
-app.use((err, req, res, next) => {
-    console.error(err.stack);
+app.use((err, _req, res, _next) => {
+    console.error('❌ Error del servidor:', err.message);
     res.status(500).json({
         message: 'Error interno del servidor',
         error: process.env.NODE_ENV === 'development' ? err.message : {}

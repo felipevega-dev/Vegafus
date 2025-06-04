@@ -11,7 +11,6 @@ export class CharacterSelectionScene extends Phaser.Scene {
     }
 
     create() {
-        console.log('🎭 Iniciando selección de personajes');
 
         // Fondo
         this.add.rectangle(640, 360, 1280, 720, 0x1a1a2e);
@@ -281,7 +280,7 @@ export class CharacterSelectionScene extends Phaser.Scene {
         this.selectedCharacter = slotData;
         slotData.slot.setStrokeStyle(4, 0xffff00); // Borde amarillo para selección
 
-        console.log(`🎭 Personaje seleccionado: ${slotData.character.name}`);
+
 
         // Habilitar botón de jugar
         if (this.playButton) {
@@ -345,7 +344,7 @@ export class CharacterSelectionScene extends Phaser.Scene {
             return;
         }
 
-        console.log('🎨 Abriendo creación de personaje');
+
         
         // Ir a la escena de creación de personajes
         this.scene.start('CharacterCreationScene', {
@@ -355,11 +354,9 @@ export class CharacterSelectionScene extends Phaser.Scene {
 
     startGame() {
         if (!this.selectedCharacter || !this.selectedCharacter.character) {
-            console.log('❌ No hay personaje seleccionado');
+            console.warn('No hay personaje seleccionado');
             return;
         }
-
-        console.log(`🎮 Iniciando juego con: ${this.selectedCharacter.character.name}`);
 
         // Ir al mapa de exploración con el personaje seleccionado
         this.scene.start('ExplorationMap', {
@@ -373,7 +370,7 @@ export class CharacterSelectionScene extends Phaser.Scene {
             const { apiClient } = await import('../utils/ApiClient.js');
             await apiClient.logout();
             
-            console.log('👋 Logout exitoso');
+
             this.scene.start('AuthSceneHTML');
         } catch (error) {
             console.error('❌ Error en logout:', error);
