@@ -966,10 +966,12 @@ export class RightSidePanel {
     }
 
     createConfigModal() {
+        console.log('⚙️ Creando modal de configuración...');
+        
         const colors = LayoutConfig.COLORS;
         const depths = LayoutConfig.DEPTHS;
-
-        // Fondo semi-transparente que cubre toda la pantalla
+        
+        // Fondo semi-transparente
         this.configModalBg = this.scene.add.rectangle(
             LayoutConfig.GAME_WIDTH / 2,
             LayoutConfig.GAME_HEIGHT / 2,
@@ -978,40 +980,72 @@ export class RightSidePanel {
             0x000000,
             0.7
         );
-        this.configModalBg.setDepth(depths.MODAL_BACKGROUND);
-        this.configModalBg.setInteractive();
-        this.configModalBg.on('pointerdown', () => this.hideConfigModal());
-
-        // Panel del menú de configuración en el centro
+        this.configModalBg.setDepth(depths.MODAL_BG);
+        
+        // Panel de configuración
         this.configModalPanel = this.scene.add.rectangle(
             LayoutConfig.GAME_WIDTH / 2,
             LayoutConfig.GAME_HEIGHT / 2,
+            400,
             300,
-            200,
             colors.PANEL_BG,
-            0.95
+            1
         );
-        this.configModalPanel.setDepth(depths.MODAL_ELEMENTS);
-        this.configModalPanel.setStrokeStyle(3, colors.PANEL_BORDER);
-
-        // Título del modal
+        this.configModalPanel.setDepth(depths.MODAL_BG + 1);
+        this.configModalPanel.setStrokeStyle(2, colors.PANEL_BORDER);
+        
+        // Título
         this.configModalTitle = this.scene.add.text(
             LayoutConfig.GAME_WIDTH / 2,
-            LayoutConfig.GAME_HEIGHT / 2 - 70,
+            LayoutConfig.GAME_HEIGHT / 2 - 120,
             'CONFIGURACIÓN',
-            LayoutUtils.createTextStyle('TITLE', { color: colors.TEXT_ACCENT })
+            LayoutUtils.createTextStyle('TITLE')
         );
         this.configModalTitle.setOrigin(0.5);
         this.configModalTitle.setDepth(depths.MODAL_ELEMENTS + 1);
-
+        
+        // Botón para volver a selección de personajes
+        this.characterSelectButton = this.scene.add.rectangle(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2 - 60,
+            300,
+            40,
+            colors.BUTTON_BG,
+            1
+        );
+        this.characterSelectButton.setDepth(depths.MODAL_ELEMENTS + 1);
+        this.characterSelectButton.setStrokeStyle(2, colors.PANEL_BORDER);
+        this.characterSelectButton.setInteractive();
+        
+        this.characterSelectText = this.scene.add.text(
+            LayoutConfig.GAME_WIDTH / 2,
+            LayoutConfig.GAME_HEIGHT / 2 - 60,
+            'Selección de Personajes',
+            LayoutUtils.createTextStyle('BUTTON', { color: colors.TEXT_PRIMARY })
+        );
+        this.characterSelectText.setOrigin(0.5);
+        this.characterSelectText.setDepth(depths.MODAL_ELEMENTS + 2);
+        
+        // Eventos del botón de selección de personajes
+        this.characterSelectButton.on('pointerdown', () => {
+            this.hideConfigModal();
+            this.goToCharacterSelection();
+        });
+        this.characterSelectButton.on('pointerover', () => {
+            this.characterSelectButton.setFillStyle(colors.BUTTON_HOVER);
+        });
+        this.characterSelectButton.on('pointerout', () => {
+            this.characterSelectButton.setFillStyle(colors.BUTTON_BG);
+        });
+        
         // Botón de logout
         this.logoutModalButton = this.scene.add.rectangle(
             LayoutConfig.GAME_WIDTH / 2,
             LayoutConfig.GAME_HEIGHT / 2 - 20,
-            200,
+            300,
             40,
-            colors.BUTTON_BG,
-            0.9
+            colors.BUTTON_ERROR,
+            1
         );
         this.logoutModalButton.setDepth(depths.MODAL_ELEMENTS + 1);
         this.logoutModalButton.setStrokeStyle(2, colors.PANEL_BORDER);
@@ -1061,6 +1095,8 @@ export class RightSidePanel {
             this.configModalBg,
             this.configModalPanel,
             this.configModalTitle,
+            this.characterSelectButton,
+            this.characterSelectText,
             this.logoutModalButton,
             this.logoutModalText,
             this.closeModalButton
@@ -1090,6 +1126,20 @@ export class RightSidePanel {
         if (this.scene.handleLogout) {
             this.scene.handleLogout();
         }
+    }
+
+    goToCharacterSelection() {
+        console.log('🎮 Volviendo a selección de personajes...');
+        
+        // Guardar progreso antes de cambiar de escena (opcional)
+        if (this.scene.saveSystem && typeof this.scene.saveSystem.saveGame === 'function') {
+            this.scene.saveSystem.saveGame();
+        }
+        
+        // Cambiar a la escena de selección de personajes
+        this.scene.scene.start('CharacterSelectionScene', {
+            userData: this.scene.userData
+        });
     }
 
     // Ya no necesitamos estos métodos porque usamos modales
@@ -1184,3 +1234,5 @@ export class RightSidePanel {
         }
     }
 }
+
+
