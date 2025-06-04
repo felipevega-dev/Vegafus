@@ -3,8 +3,11 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
+// Importar configuración y utilidades
+const { APP_CONFIG, CORS_CONFIG } = require('./config/constants');
+const { globalErrorHandler } = require('./utils/responseHandler');
+
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Middleware
 // Configuración de CORS más flexible para desarrollo
@@ -15,17 +18,8 @@ const corsOptions = {
             return callback(null, true);
         }
 
-        // Lista de orígenes permitidos
-        const allowedOrigins = [
-            'http://localhost:8080',
-            'http://localhost:8083',
-            'http://localhost:3001', // Vite dev server
-            'http://localhost:3002', // Vite dev server
-            'http://127.0.0.1:8080',
-            'http://127.0.0.1:8083',
-            'http://127.0.0.1:3001', // Vite dev server
-            process.env.FRONTEND_URL
-        ].filter(Boolean); // Filtrar valores undefined
+        // Usar orígenes permitidos desde configuración centralizada
+        const allowedOrigins = CORS_CONFIG.ALLOWED_ORIGINS;
 
         if (allowedOrigins.includes(origin)) {
             callback(null, true);
@@ -44,7 +38,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Conexión a MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/dofus-game')
+mongoose.connect(APP_CONFIG.MONGODB_URI)
     .then(async () => {
         console.log('✅ Conectado a MongoDB');
 
@@ -64,9 +58,10 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/dofus-gam
 // Rutas básicas
 app.get('/', (_, res) => {
     res.json({
-        message: '🎮 Dofus Backend API',
-        version: '1.0.0',
-        status: 'running'
+        message: APP_CONFIG.NAME,
+        version: APP_CONFIG.VERSION,
+        status: 'running',
+        environment: APP_CONFIG.NODE_ENV
     });
 });
 
@@ -84,14 +79,8 @@ try {
     process.exit(1);
 }
 
-// Middleware de manejo de errores
-app.use((err, _req, res, _next) => {
-    console.error('❌ Error del servidor:', err.message);
-    res.status(500).json({
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? err.message : {}
-    });
-});
+// Middleware de manejo de errores global
+app.use(globalErrorHandler);
 
 // Ruta 404 - Manejar todas las rutas no encontradas
 app.use((req, res) => {
@@ -102,10 +91,12 @@ app.use((req, res) => {
 });
 
 // Iniciar servidor
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-    console.log(`📱 Frontend URL: ${process.env.FRONTEND_URL}`);
-    console.log(`🗄️  MongoDB: ${process.env.MONGODB_URI}`);
+app.listen(APP_CONFIG.PORT, () => {
+    console.log(`🚀 ${APP_CONFIG.NAME} v${APP_CONFIG.VERSION}`);
+    console.log(`🌐 Servidor corriendo en puerto ${APP_CONFIG.PORT}`);
+    console.log(`🔧 Entorno: ${APP_CONFIG.NODE_ENV}`);
+    console.log(`📱 Frontend URL: ${process.env.FRONTEND_URL || 'No configurado'}`);
+    console.log(`🗄️  MongoDB: ${APP_CONFIG.MONGODB_URI}`);
 });
 
 module.exports = app;

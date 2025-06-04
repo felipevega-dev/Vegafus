@@ -1,19 +1,32 @@
+import { APP_CONFIG, API_ENDPOINTS, UI_MESSAGES } from '../config/constants.js';
+
 export class CharacterSelectionScene extends Phaser.Scene {
     constructor() {
         super({ key: 'CharacterSelectionScene' });
     }
 
     init(data) {
-        this.userData = data.userData;
+        this.userData = data?.userData;
         this.characters = [];
         this.selectedCharacter = null;
         this.deletingCharacter = false; // Bandera para evitar selección durante eliminación
+
+        // Si no hay userData, intentar obtenerla del token
+        if (!this.userData) {
+            console.warn('⚠️ No se recibieron datos de usuario, intentando verificar token...');
+            this.needsUserData = true;
+        }
     }
 
-    create() {
+    async create() {
 
         // Fondo
         this.add.rectangle(640, 360, 1280, 720, 0x1a1a2e);
+
+        // Si no hay userData, intentar obtenerla
+        if (this.needsUserData) {
+            await this.loadUserData();
+        }
 
         // Título principal
         this.add.text(640, 80, 'SELECCIONAR PERSONAJE', {
@@ -23,8 +36,9 @@ export class CharacterSelectionScene extends Phaser.Scene {
             fontStyle: 'bold'
         }).setOrigin(0.5);
 
-        // Información del usuario
-        this.add.text(640, 120, `Bienvenido, ${this.userData.username}`, {
+        // Información del usuario con validación
+        const username = this.userData?.username || 'Usuario';
+        this.add.text(640, 120, `Bienvenido, ${username}`, {
             fontSize: '18px',
             fontFamily: 'Arial',
             color: '#cccccc'
@@ -37,36 +51,53 @@ export class CharacterSelectionScene extends Phaser.Scene {
         this.createUI();
     }
 
+    async loadUserData() {
+        try {
+            console.log('🔍 Intentando obtener datos del usuario desde token...');
+            const { apiClient } = await import('../utils/ApiClient.js');
+            const response = await apiClient.verifyToken();
+
+            if (response) {
+                // Extraer datos del usuario del formato estandarizado
+                this.userData = response.data?.user || response.user || response;
+                console.log('✅ Datos de usuario obtenidos:', this.userData);
+                this.needsUserData = false;
+            } else {
+                console.error('❌ No se pudieron obtener datos del usuario');
+                // Redirigir a login si no hay datos válidos
+                this.scene.start('AuthSceneHTML');
+                return;
+            }
+        } catch (error) {
+            console.error('❌ Error obteniendo datos del usuario:', error);
+            // Redirigir a login en caso de error
+            this.scene.start('AuthSceneHTML');
+        }
+    }
+
     async loadCharacters() {
         try {
             console.log('📡 Cargando personajes del usuario...');
-            
-            const response = await fetch('http://localhost:3000/api/characters', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-                    'Content-Type': 'application/json'
-                }
-            });
 
-            if (response.ok) {
-                const data = await response.json();
-                this.characters = data.characters || [];
-                
-                console.log(`✅ ${this.characters.length} personajes cargados`);
-                
-                // Actualizar la galería
-                this.updateCharacterGallery();
-            } else {
-                console.error('❌ Error cargando personajes:', response.status);
-                this.characters = [];
-                this.updateCharacterGallery();
-            }
+            // Usar ApiClient para obtener personajes
+            const { apiClient } = await import('../utils/ApiClient.js');
+            const response = await apiClient.getCharacters();
+
+            // Manejar tanto formato nuevo como legacy
+            this.characters = response.characters || response.data?.characters || [];
+
+            console.log(`✅ ${this.characters.length} personajes cargados`);
+
+            // Actualizar la galería
+            this.updateCharacterGallery();
 
         } catch (error) {
             console.error('❌ Error cargando personajes:', error);
             this.characters = [];
             this.updateCharacterGallery();
+
+            // Mostrar mensaje de error al usuario
+            this.showErrorMessage(UI_MESSAGES.ERROR.LOAD_CHARACTERS_FAILED);
         }
     }
 
@@ -493,55 +524,37 @@ export class CharacterSelectionScene extends Phaser.Scene {
                 padding: { x: 15, y: 8 }
             }).setOrigin(0.5);
 
-            // Llamar al API para eliminar el personaje
-            const response = await fetch(`http://localhost:3000/api/characters/${character.id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-                    'Content-Type': 'application/json'
+            // Usar ApiClient para eliminar el personaje
+            const { apiClient } = await import('../utils/ApiClient.js');
+            await apiClient.deleteCharacter(character.id || character._id);
+
+            deletingMessage.setText('✅ Personaje eliminado exitosamente');
+            deletingMessage.setColor('#00ff00');
+
+            console.log(`✅ Personaje ${character.name} eliminado exitosamente`);
+
+            // Si el personaje eliminado estaba seleccionado, deseleccionar
+            if (this.selectedCharacter && this.selectedCharacter.character.id === character.id) {
+                this.selectedCharacter = null;
+                if (this.playButton) {
+                    this.playButton.setAlpha(0.5);
+                    this.playButton.removeInteractive();
                 }
-            });
-
-            if (response.ok) {
-                deletingMessage.setText('✅ Personaje eliminado exitosamente');
-                deletingMessage.setColor('#00ff00');
-
-                console.log(`✅ Personaje ${character.name} eliminado exitosamente`);
-
-                // Si el personaje eliminado estaba seleccionado, deseleccionar
-                if (this.selectedCharacter && this.selectedCharacter.character.id === character.id) {
-                    this.selectedCharacter = null;
-                    if (this.playButton) {
-                        this.playButton.setAlpha(0.5);
-                        this.playButton.removeInteractive();
-                    }
-                }
-
-                // Recargar la lista de personajes
-                await this.loadCharacters();
-
-                // Eliminar mensaje después de 2 segundos
-                this.time.delayedCall(2000, () => {
-                    deletingMessage.destroy();
-                });
-
-            } else {
-                const errorData = await response.json();
-                deletingMessage.setText(`❌ Error: ${errorData.message || 'No se pudo eliminar el personaje'}`);
-                deletingMessage.setColor('#ff0000');
-
-                console.error('❌ Error eliminando personaje:', errorData);
-
-                // Eliminar mensaje después de 3 segundos
-                this.time.delayedCall(3000, () => {
-                    deletingMessage.destroy();
-                });
             }
+
+            // Recargar la lista de personajes
+            await this.loadCharacters();
+
+            // Eliminar mensaje después de 2 segundos
+            this.time.delayedCall(2000, () => {
+                deletingMessage.destroy();
+            });
 
         } catch (error) {
             console.error('❌ Error eliminando personaje:', error);
 
-            const errorMessage = this.add.text(640, 520, '❌ Error de conexión', {
+            // Mostrar mensaje de error
+            const errorMessage = this.add.text(640, 520, `❌ Error: ${error.message || 'No se pudo eliminar el personaje'}`, {
                 fontSize: '18px',
                 fontFamily: 'Arial',
                 color: '#ff0000',
@@ -549,9 +562,25 @@ export class CharacterSelectionScene extends Phaser.Scene {
                 padding: { x: 15, y: 8 }
             }).setOrigin(0.5);
 
+            // Eliminar mensaje después de 3 segundos
             this.time.delayedCall(3000, () => {
                 errorMessage.destroy();
             });
         }
+    }
+
+    // Método para mostrar mensajes de error
+    showErrorMessage(message) {
+        const errorMessage = this.add.text(640, 520, message, {
+            fontSize: '18px',
+            fontFamily: 'Arial',
+            color: '#ff0000',
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            padding: { x: 15, y: 8 }
+        }).setOrigin(0.5);
+
+        this.time.delayedCall(3000, () => {
+            errorMessage.destroy();
+        });
     }
 }

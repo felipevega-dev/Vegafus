@@ -1,23 +1,27 @@
+import { APP_CONFIG, API_ENDPOINTS, UI_MESSAGES } from '../config/constants.js';
+
 /**
  * Cliente para comunicarse con el backend API
  */
 export class ApiClient {
     constructor() {
-        this.baseURL = 'http://localhost:3000/api';
-        this.token = localStorage.getItem('authToken');
+        this.baseURL = APP_CONFIG.API_BASE_URL;
+        this.token = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+        this.timeout = APP_CONFIG.REQUEST_TIMEOUT;
     }
 
     /**
-     * Realizar petición HTTP
+     * Realizar petición HTTP con timeout y manejo de errores mejorado
      */
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
-        
+
         const config = {
             headers: {
                 'Content-Type': 'application/json',
                 ...options.headers
             },
+            signal: AbortSignal.timeout(this.timeout),
             ...options
         };
 
@@ -31,11 +35,30 @@ export class ApiClient {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || 'Error en la petición');
+                // Manejar errores específicos
+                if (response.status === 401) {
+                    this.clearToken();
+                    throw new Error(UI_MESSAGES.ERROR.INVALID_CREDENTIALS);
+                }
+
+                if (response.status === 404) {
+                    throw new Error(UI_MESSAGES.ERROR.CHARACTER_NOT_FOUND);
+                }
+
+                throw new Error(data.message || UI_MESSAGES.ERROR.GENERIC);
+            }
+
+            // Verificar formato de respuesta estandarizado
+            if (data.success === false) {
+                throw new Error(data.message || UI_MESSAGES.ERROR.GENERIC);
             }
 
             return data;
         } catch (error) {
+            if (error.name === 'TimeoutError') {
+                throw new Error(UI_MESSAGES.ERROR.NETWORK);
+            }
+
             console.error('Error en API:', error);
             throw error;
         }
@@ -45,13 +68,13 @@ export class ApiClient {
      * Registrar nuevo usuario
      */
     async register(username, email, password) {
-        const data = await this.request('/auth/register', {
+        const data = await this.request(API_ENDPOINTS.AUTH.REGISTER, {
             method: 'POST',
             body: JSON.stringify({ username, email, password })
         });
 
-        if (data.token) {
-            this.setToken(data.token);
+        if (data.data?.token) {
+            this.setToken(data.data.token);
         }
 
         return data;
@@ -61,13 +84,13 @@ export class ApiClient {
      * Iniciar sesión
      */
     async login(username, password) {
-        const data = await this.request('/auth/login', {
+        const data = await this.request(API_ENDPOINTS.AUTH.LOGIN, {
             method: 'POST',
             body: JSON.stringify({ username, password })
         });
 
-        if (data.token) {
-            this.setToken(data.token);
+        if (data.data?.token) {
+            this.setToken(data.data.token);
         }
 
         return data;
@@ -80,8 +103,8 @@ export class ApiClient {
         if (!this.token) return null;
 
         try {
-            const data = await this.request('/auth/verify');
-            return data.user;
+            const data = await this.request(API_ENDPOINTS.AUTH.VERIFY);
+            return data.data?.user;
         } catch (error) {
             this.clearToken();
             return null;
@@ -93,7 +116,7 @@ export class ApiClient {
      */
     async logout() {
         try {
-            await this.request('/auth/logout', { method: 'POST' });
+            await this.request(API_ENDPOINTS.AUTH.LOGOUT, { method: 'POST' });
         } catch (error) {
             console.error('Error en logout:', error);
         } finally {
@@ -105,17 +128,19 @@ export class ApiClient {
      * Obtener personajes del usuario
      */
     async getCharacters() {
-        return await this.request('/characters');
+        const response = await this.request(API_ENDPOINTS.CHARACTERS.GET_ALL);
+        return response.data || response;
     }
 
     /**
      * Crear nuevo personaje
      */
     async createCharacter(name, characterClass) {
-        return await this.request('/characters', {
+        const response = await this.request(API_ENDPOINTS.CHARACTERS.CREATE, {
             method: 'POST',
             body: JSON.stringify({ name, class: characterClass })
         });
+        return response.data || response;
     }
 
     /**
@@ -133,6 +158,16 @@ export class ApiClient {
             method: 'PUT',
             body: JSON.stringify(gameData)
         });
+    }
+
+    /**
+     * Eliminar personaje
+     */
+    async deleteCharacter(characterId) {
+        const response = await this.request(API_ENDPOINTS.CHARACTERS.DELETE(characterId), {
+            method: 'DELETE'
+        });
+        return response.data || response; // Compatibilidad con formato anterior
     }
 
     /**
@@ -236,7 +271,7 @@ export class ApiClient {
      */
     setToken(token) {
         this.token = token;
-        localStorage.setItem('authToken', token);
+        localStorage.setItem(APP_CONFIG.STORAGE_KEYS.AUTH_TOKEN, token);
     }
 
     /**
@@ -244,8 +279,8 @@ export class ApiClient {
      */
     clearToken() {
         this.token = null;
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('token'); // Limpiar ambos tokens por compatibilidad
+        localStorage.removeItem(APP_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+        localStorage.removeItem('token'); // Limpiar token legacy por compatibilidad
     }
 
     /**

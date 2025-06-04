@@ -127,10 +127,13 @@ export class AuthSceneHTML extends Phaser.Scene {
         try {
             const response = await apiClient.login(username, password);
             console.log('Login exitoso:', response);
-            
+
+            // Extraer datos del usuario del formato estandarizado
+            const userData = response.data?.user || response.user || response.data;
+
             // Ocultar overlay y ir a selección de personajes
             this.hideAuthOverlay();
-            this.scene.start('CharacterSelectionScene', { userData: response.user });
+            this.scene.start('CharacterSelectionScene', { userData });
         } catch (error) {
             this.showError('login', error.message);
         } finally {
@@ -174,10 +177,13 @@ export class AuthSceneHTML extends Phaser.Scene {
         try {
             const response = await apiClient.register(username, email, password);
             console.log('Registro exitoso:', response);
-            
+
+            // Extraer datos del usuario del formato estandarizado
+            const userData = response.data?.user || response.user || response.data;
+
             // Ocultar overlay y ir a selección de personajes
             this.hideAuthOverlay();
-            this.scene.start('CharacterSelectionScene', { userData: response.user });
+            this.scene.start('CharacterSelectionScene', { userData });
         } catch (error) {
             this.showError('register', error.message);
         } finally {
@@ -187,11 +193,13 @@ export class AuthSceneHTML extends Phaser.Scene {
 
     async checkAuthentication() {
         try {
-            const user = await apiClient.verifyToken();
-            if (user) {
-                console.log('Usuario ya autenticado:', user);
+            const response = await apiClient.verifyToken();
+            if (response) {
+                // Extraer datos del usuario del formato estandarizado
+                const userData = response.data?.user || response.user || response;
+                console.log('Usuario ya autenticado:', userData);
                 this.hideAuthOverlay();
-                this.scene.start('CharacterSelectionScene', { userData: user });
+                this.scene.start('CharacterSelectionScene', { userData });
             }
         } catch (error) {
             console.log('No hay sesión activa');

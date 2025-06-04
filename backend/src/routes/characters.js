@@ -2,57 +2,64 @@ const express = require('express');
 const Character = require('../models/Character');
 const auth = require('../middleware/auth');
 
+// Importar utilidades estandarizadas
+const { APP_CONFIG, RESPONSE_MESSAGES, HTTP_STATUS } = require('../config/constants');
+const {
+    sendSuccess,
+    sendError,
+    sendValidationError,
+    sendNotFound,
+    sendForbidden,
+    asyncHandler,
+    handleDatabaseError
+} = require('../utils/responseHandler');
+const {
+    validateCharacterCreation,
+    validateCharacterUpdate,
+    validatePointsDistribution,
+    isValidObjectId
+} = require('../utils/validators');
+
 const router = express.Router();
 
 // Todas las rutas requieren autenticación
 router.use(auth);
 
 // Obtener todos los personajes del usuario
-router.get('/', async (req, res) => {
-    try {
-        const characters = await Character.find({ 
-            userId: req.userId,
-            isActive: true 
-        }).sort({ 'gameStats.lastSaved': -1 })
+router.get('/', asyncHandler(async (req, res) => {
+    const characters = await Character.find({
+        userId: req.userId,
+        isActive: true
+    }).sort({ 'gameStats.lastSaved': -1 });
 
-        res.json({
-            message: 'Personajes obtenidos exitosamente',
-            characters: characters.map(char => char.toGameJSON())
-        });
-    } catch (error) {
-        console.error('Error obteniendo personajes:', error);
-        res.status(500).json({
-            message: 'Error interno del servidor'
-        });
-    }
-});
+    return sendSuccess(res, RESPONSE_MESSAGES.SUCCESS.CHARACTERS_FOUND, {
+        characters: characters.map(char => char.toGameJSON())
+    });
+}));
 
 // Obtener un personaje específico
-router.get('/:characterId', async (req, res) => {
-    try {
-        const character = await Character.findOne({
-            _id: req.params.characterId,
-            userId: req.userId,
-            isActive: true
-        });
+router.get('/:characterId', asyncHandler(async (req, res) => {
+    const { characterId } = req.params;
 
-        if (!character) {
-            return res.status(404).json({
-                message: 'Personaje no encontrado'
-            });
-        }
-
-        res.json({
-            message: 'Personaje obtenido exitosamente',
-            character: character.toGameJSON()
-        });
-    } catch (error) {
-        console.error('Error obteniendo personaje:', error);
-        res.status(500).json({
-            message: 'Error interno del servidor'
-        });
+    // Validar ObjectId
+    if (!isValidObjectId(characterId)) {
+        return sendValidationError(res, 'ID de personaje inválido');
     }
-});
+
+    const character = await Character.findOne({
+        _id: characterId,
+        userId: req.userId,
+        isActive: true
+    });
+
+    if (!character) {
+        return sendNotFound(res, RESPONSE_MESSAGES.RESOURCE.CHARACTER_NOT_FOUND);
+    }
+
+    return sendSuccess(res, RESPONSE_MESSAGES.SUCCESS.CHARACTER_FOUND, {
+        character: character.toGameJSON()
+    });
+}));
 
 // Crear nuevo personaje
 router.post('/', async (req, res) => {
@@ -392,93 +399,93 @@ router.post('/:characterId/distribute-points', async (req, res) => {
     }
 });
 
-// Ruta para corregir puntos faltantes de personajes existentes
-router.post('/:characterId/fix-points', async (req, res) => {
-    try {
-        const character = await Character.findOne({
-            _id: req.params.characterId,
-            userId: req.userId,
-            isActive: true
-        });
-
-        if (!character) {
-            return res.status(404).json({
-                message: 'Personaje no encontrado'
-            });
-        }
-
-        // Calcular puntos que debería tener según su nivel
-        const expectedCapitalPoints = 10 + ((character.level - 1) * 5); // 10 inicial + 5 por nivel
-        const expectedSpellPoints = 1 + (character.level - 1); // 1 inicial + 1 por nivel
-
-        // Corregir puntos si están por debajo de lo esperado
-        const capitalPointsToAdd = Math.max(0, expectedCapitalPoints - character.capitalPoints);
-        const spellPointsToAdd = Math.max(0, expectedSpellPoints - character.spellPoints);
-
-        character.capitalPoints += capitalPointsToAdd;
-        character.spellPoints += spellPointsToAdd;
-
-        await character.save();
-
-        res.json({
-            message: `Puntos corregidos: +${capitalPointsToAdd} capital, +${spellPointsToAdd} hechizo`,
-            character: character.toGameJSON(),
-            corrections: {
-                capitalPointsAdded: capitalPointsToAdd,
-                spellPointsAdded: spellPointsToAdd,
-                newCapitalPoints: character.capitalPoints,
-                newSpellPoints: character.spellPoints
-            }
-        });
-
-    } catch (error) {
-        console.error('Error corrigiendo puntos:', error);
-        res.status(500).json({
-            message: 'Error interno del servidor',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
+// Ruta para corregir puntos faltantes de personajes existentes (solo desarrollo)
+router.post('/:characterId/fix-points', asyncHandler(async (req, res) => {
+    // Solo permitir en desarrollo
+    if (APP_CONFIG.NODE_ENV === 'production') {
+        return sendForbidden(res, RESPONSE_MESSAGES.SERVER.FORBIDDEN);
     }
-});
 
-// Ruta para forzar level up (para testing)
-router.post('/:characterId/force-levelup', async (req, res) => {
-    try {
-        const character = await Character.findOne({
-            _id: req.params.characterId,
-            userId: req.userId,
-            isActive: true
-        });
+    const { characterId } = req.params;
 
-        if (!character) {
-            return res.status(404).json({
-                message: 'Personaje no encontrado'
-            });
-        }
-
-        // Dar suficiente XP para subir de nivel
-        const requiredXP = character.getExpForNextLevel();
-        character.experience = requiredXP;
-
-        // Verificar si puede subir de nivel y hacerlo
-        let levelsGained = 0;
-        while (character.canLevelUp()) {
-            character.levelUp();
-            levelsGained++;
-        }
-
-        await character.save();
-
-        res.json({
-            message: `¡Subiste ${levelsGained} nivel(es)!`,
-            character: character.toGameJSON()
-        });
-
-    } catch (error) {
-        console.error('Error forzando level up:', error);
-        res.status(500).json({
-            message: 'Error interno del servidor'
-        });
+    if (!isValidObjectId(characterId)) {
+        return sendValidationError(res, 'ID de personaje inválido');
     }
-});
+
+    const character = await Character.findOne({
+        _id: characterId,
+        userId: req.userId,
+        isActive: true
+    });
+
+    if (!character) {
+        return sendNotFound(res, RESPONSE_MESSAGES.RESOURCE.CHARACTER_NOT_FOUND);
+    }
+
+    // Calcular puntos que debería tener según su nivel
+    const expectedCapitalPoints = APP_CONFIG.INITIAL_CAPITAL_POINTS + ((character.level - 1) * APP_CONFIG.CAPITAL_POINTS_PER_LEVEL);
+    const expectedSpellPoints = APP_CONFIG.INITIAL_SPELL_POINTS + (character.level - 1);
+
+    // Corregir puntos si están por debajo de lo esperado
+    const capitalPointsToAdd = Math.max(0, expectedCapitalPoints - character.capitalPoints);
+    const spellPointsToAdd = Math.max(0, expectedSpellPoints - character.spellPoints);
+
+    character.capitalPoints += capitalPointsToAdd;
+    character.spellPoints += spellPointsToAdd;
+
+    await character.save();
+
+    return sendSuccess(res, `Puntos corregidos: +${capitalPointsToAdd} capital, +${spellPointsToAdd} hechizo`, {
+        character: character.toGameJSON(),
+        corrections: {
+            capitalPointsAdded: capitalPointsToAdd,
+            spellPointsAdded: spellPointsToAdd,
+            newCapitalPoints: character.capitalPoints,
+            newSpellPoints: character.spellPoints
+        }
+    });
+}));
+
+// Ruta para forzar level up (solo desarrollo)
+router.post('/:characterId/force-levelup', asyncHandler(async (req, res) => {
+    // Solo permitir en desarrollo
+    if (APP_CONFIG.NODE_ENV === 'production') {
+        return sendForbidden(res, RESPONSE_MESSAGES.SERVER.FORBIDDEN);
+    }
+
+    const { characterId } = req.params;
+
+    if (!isValidObjectId(characterId)) {
+        return sendValidationError(res, 'ID de personaje inválido');
+    }
+
+    const character = await Character.findOne({
+        _id: characterId,
+        userId: req.userId,
+        isActive: true
+    });
+
+    if (!character) {
+        return sendNotFound(res, RESPONSE_MESSAGES.RESOURCE.CHARACTER_NOT_FOUND);
+    }
+
+    // Dar suficiente XP para subir de nivel
+    const requiredXP = character.getExpForNextLevel();
+    character.experience = requiredXP;
+
+    // Verificar si puede subir de nivel y hacerlo
+    let levelsGained = 0;
+    while (character.canLevelUp()) {
+        character.levelUp();
+        levelsGained++;
+    }
+
+    await character.save();
+
+    return sendSuccess(res, `¡Subiste ${levelsGained} nivel(es)!`, {
+        character: character.toGameJSON(),
+        levelsGained
+    });
+}));
 
 module.exports = router;

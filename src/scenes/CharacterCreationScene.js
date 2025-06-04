@@ -1,3 +1,5 @@
+import { APP_CONFIG, UI_MESSAGES } from '../config/constants.js';
+
 export class CharacterCreationScene extends Phaser.Scene {
     constructor() {
         super({ key: 'CharacterCreationScene' });
@@ -299,37 +301,21 @@ export class CharacterCreationScene extends Phaser.Scene {
 
             console.log(`🎨 Creando personaje: ${this.characterName} (${this.selectedClass})`);
 
-            const response = await fetch('http://localhost:3000/api/characters', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}`
-                },
-                body: JSON.stringify({
-                    name: this.characterName,
-                    class: this.selectedClass
-                })
-            });
+            // Usar ApiClient para crear el personaje
+            const { apiClient } = await import('../utils/ApiClient.js');
+            const response = await apiClient.createCharacter(this.characterName, this.selectedClass);
 
-            if (response.ok) {
-                const data = await response.json();
-                
-                creatingMsg.setText('✅ ¡Personaje creado exitosamente!');
-                creatingMsg.setColor('#00ff00');
+            creatingMsg.setText('✅ ¡Personaje creado exitosamente!');
+            creatingMsg.setColor('#00ff00');
 
-                console.log('✅ Personaje creado:', data.character);
+            console.log('✅ Personaje creado:', response.character || response);
 
-                // Volver a la selección de personajes después de 2 segundos
-                this.time.delayedCall(2000, () => {
-                    this.scene.start('CharacterSelectionScene', {
-                        userData: this.userData
-                    });
+            // Volver a la selección de personajes después de 2 segundos
+            this.time.delayedCall(2000, () => {
+                this.scene.start('CharacterSelectionScene', {
+                    userData: this.userData
                 });
-
-            } else {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Error creando personaje');
-            }
+            });
 
         } catch (error) {
             console.error('❌ Error creando personaje:', error);
