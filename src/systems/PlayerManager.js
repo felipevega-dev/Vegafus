@@ -18,24 +18,26 @@ export class PlayerManager {
             // Verificar si viene del combate (para recargar datos del backend)
             this.comingFromCombat = this.scene.registry.get('playerData') !== null;
 
-            // Si hay usuario autenticado, SIEMPRE cargar del backend (especialmente si viene del combate)
+            // Si hay usuario autenticado, SIEMPRE cargar del backend
             if (this.userData) {
-                try {
-                    await this.loadPlayerFromBackend();
+                console.log('🔍 Usuario autenticado detectado, cargando desde backend...');
 
-                    // Si viene del combate, limpiar datos locales ya que ahora tenemos los actualizados
-                    if (this.comingFromCombat) {
-                        this.scene.registry.remove('playerData');
-                        console.log('🔄 Datos del combate limpiados, usando datos frescos del backend');
-                    }
-                } catch (error) {
-                    console.error('Error cargando personaje del backend:', error);
-                    // Si falla, crear personaje por defecto
-                    this.createDefaultPlayer();
+                // Verificar que tenemos un characterId válido
+                if (!this.currentCharacterId) {
+                    console.log('❌ No hay characterId válido');
+                    throw new Error('No se ha seleccionado un personaje válido. Debes seleccionar un personaje desde la galería.');
+                }
+
+                await this.loadPlayerFromBackend();
+
+                // Limpiar datos locales obsoletos si viene del combate
+                if (this.comingFromCombat) {
+                    this.scene.registry.remove('playerData');
+                    console.log('🔄 Datos del combate limpiados, usando datos frescos del backend');
                 }
             } else {
-                // Sin usuario autenticado, usar datos locales
-                this.createDefaultPlayer();
+                console.log('❌ No hay usuario autenticado');
+                throw new Error('Usuario no autenticado. Debes iniciar sesión primero.');
             }
 
             // Verificar que el jugador se creó correctamente
@@ -71,7 +73,7 @@ export class PlayerManager {
                 const response = await fetch(`http://localhost:3000/api/characters/${this.currentCharacterId}`, {
                     method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}`,
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
                         'Content-Type': 'application/json'
                     }
                 });
@@ -94,18 +96,9 @@ export class PlayerManager {
                 }
             }
         } else {
-            // No hay ID específico, cargar el primer personaje disponible
-            console.log('🔍 Buscando personajes en el backend...');
-            const response = await apiClient.getCharacters();
-            const characters = response.characters;
-
-            console.log('📋 Respuesta del backend:', response);
-            console.log('👥 Personajes encontrados:', characters?.length || 0);
-
-            if (characters && characters.length > 0) {
-                character = characters[0];
-                this.currentCharacterId = character.id;
-            }
+            // No hay ID específico - esto no debería pasar si el flujo es correcto
+            console.log('❌ No hay characterId específico - esto indica un problema en el flujo');
+            throw new Error('No se ha proporcionado un ID de personaje válido');
         }
 
         if (character) {
@@ -197,80 +190,13 @@ export class PlayerManager {
                 this.scene.notificationSystem.checkLevelUpNotification(character);
             }
         } else {
-            // No tiene personajes, crear uno nuevo
-            await this.createNewCharacterInBackend();
+            // No se encontró el personaje
+            console.log('❌ No se encontró el personaje con ID:', this.currentCharacterId);
+            throw new Error('El personaje seleccionado no existe o no tienes acceso a él');
         }
     }
 
-    async createNewCharacterInBackend() {
-        const { apiClient } = await import('@utils/ApiClient.js');
 
-        try {
-            // Crear personaje por defecto
-            console.log('🆕 Creando nuevo personaje en el backend...');
-            const response = await apiClient.createCharacter('Aventurero', 'mage');
-            const character = response.character;
-
-            console.log('✅ Nuevo personaje creado en backend:', character);
-
-            // Crear jugador con datos del nuevo personaje
-            this.player = new Player(this.scene, 5, 10, character.class);
-            this.player.level = character.level;
-            this.player.experience = character.experience;
-            this.player.currentHP = character.stats.hp.current;
-            this.player.maxHP = character.stats.hp.max;
-            this.player.attack = character.stats.attack;
-            this.player.defense = character.stats.defense;
-
-            // Cargar objetos iniciales para personaje nuevo
-            this.loadStarterItems(character.class);
-
-            this.currentCharacterId = character.id;
-
-            console.log(`Nuevo personaje creado: Nivel ${this.player.level}, XP: ${this.player.experience}`);
-        } catch (error) {
-            console.error('Error creando personaje:', error);
-            this.createDefaultPlayer();
-        }
-    }
-
-    createDefaultPlayer() {
-        try {
-            // Verificar si hay datos guardados localmente
-            const savedPlayerData = this.scene.registry.get('playerData');
-
-            if (savedPlayerData) {
-                // Restaurar jugador con datos guardados localmente
-                this.player = new Player(this.scene, savedPlayerData.gridX || 5, savedPlayerData.gridY || 10, savedPlayerData.playerClass || 'mage');
-                this.player.currentHP = savedPlayerData.currentHP || this.player.maxHP;
-                this.player.level = savedPlayerData.level || 1;
-                this.player.experience = savedPlayerData.experience || 0;
-
-                // Restaurar kamas e inventario si existen
-                this.player.kamas = savedPlayerData.kamas || 0;
-                this.player.inventory = savedPlayerData.inventory || [];
-
-                console.log(`Jugador restaurado localmente: Nivel ${this.player.level}, XP: ${this.player.experience}, Kamas: ${this.player.kamas}`);
-            } else {
-                // Crear jugador completamente nuevo
-                this.player = new Player(this.scene, 5, 10, 'mage');
-                // Cargar objetos iniciales para jugador nuevo
-                this.loadStarterItems('mage');
-                console.log('Jugador nuevo creado');
-            }
-
-            // Verificar que el jugador se creó correctamente
-            if (!this.player) {
-                throw new Error('No se pudo crear el jugador');
-            }
-
-            console.log(`Jugador creado en posición: ${this.player.gridX}, ${this.player.gridY}`);
-        } catch (error) {
-            console.error('Error creando jugador por defecto:', error);
-            // Crear jugador básico como último recurso
-            this.player = new Player(this.scene, 5, 10, 'mage');
-        }
-    }
 
     getPlayer() {
         return this.player;

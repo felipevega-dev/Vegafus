@@ -245,6 +245,7 @@ export class ApiClient {
     clearToken() {
         this.token = null;
         localStorage.removeItem('authToken');
+        localStorage.removeItem('token'); // Limpiar ambos tokens por compatibilidad
     }
 
     /**

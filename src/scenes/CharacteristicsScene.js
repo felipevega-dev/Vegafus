@@ -9,26 +9,17 @@ export class CharacteristicsScene extends Phaser.Scene {
         this.characterId = data.characterId;
         this.parentScene = data.parentScene;
 
-        // Sistema de respaldo para obtener datos faltantes
+        // Validar que tenemos los datos necesarios
         if (!this.userData) {
-            // Intentar obtener desde localStorage
-            const storedUserData = localStorage.getItem('userData');
-            if (storedUserData) {
-                try {
-                    this.userData = JSON.parse(storedUserData);
-                    console.log('🔄 userData obtenido desde localStorage');
-                } catch (e) {
-                    console.warn('Error parseando userData desde localStorage');
-                }
-            }
+            console.error('❌ No se proporcionó userData a CharacteristicsScene');
         }
 
         if (!this.characterId) {
-            // Intentar obtener desde localStorage
-            this.characterId = localStorage.getItem('selectedCharacterId') || localStorage.getItem('currentCharacterId');
-            if (this.characterId) {
-                console.log('🔄 characterId obtenido desde localStorage:', this.characterId);
-            }
+            console.error('❌ No se proporcionó characterId a CharacteristicsScene');
+        }
+
+        if (!this.player) {
+            console.error('❌ No se proporcionó player a CharacteristicsScene');
         }
 
         console.log('🎯 CharacteristicsScene inicializada:');

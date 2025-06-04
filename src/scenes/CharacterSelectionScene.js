@@ -40,14 +40,12 @@ export class CharacterSelectionScene extends Phaser.Scene {
 
     async loadCharacters() {
         try {
-            const { apiClient } = await import('../utils/ApiClient.js');
-            
             console.log('📡 Cargando personajes del usuario...');
             
             const response = await fetch('http://localhost:3000/api/characters', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}`,
+                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
                     'Content-Type': 'application/json'
                 }
             });
@@ -502,7 +500,7 @@ export class CharacterSelectionScene extends Phaser.Scene {
             const response = await fetch(`http://localhost:3000/api/characters/${character.id}`, {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}`,
+                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
                     'Content-Type': 'application/json'
                 }
             });
